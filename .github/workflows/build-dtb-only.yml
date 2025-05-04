@@ -86,7 +86,7 @@ jobs:
         
         # Create rk3399-android.dtsi if it doesn't exist
         if [ ! -f "arch/arm64/boot/dts/rockchip/rk3399-android.dtsi" ]; then
-          cat > arch/arm64/boot/dts/rockchip/rk3399-android.dtsi << 'EOF'
+          cat > arch/arm64/boot/dts/rockchip/rk3399-android.dtsi << EOF
 /* 
  * Minimal RK3399 Android DTSI for compilation
  */
@@ -105,7 +105,7 @@ EOF
         # Create rk3399-opp.dtsi if it doesn't exist
         echo "Creating or modifying RK3399 OPP DTSI file..."
         if [ ! -f "arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi" ]; then
-          cat > arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi << 'EOF'
+          cat > arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi << EOF
 /*
  * Minimal RK3399 OPP DTSI for compilation
  */
@@ -181,7 +181,7 @@ EOF
           echo "Direct compilation failed. Creating simplified DTS file..."
           
           # Create a very simplified version for testing
-          cat > build/simplified.dts << 'EOF'
+          cat > build/simplified.dts << EOF
 /dts-v1/;
 
 / {
@@ -206,111 +206,111 @@ EOF
 
     - name: Create install script
       run: |
-        cat > dtb-package/install.sh << 'EOF'
-        #!/bin/bash
-        set -e
+        cat > dtb-package/install.sh << EOF
+#!/bin/bash
+set -e
 
-        # Script to install AM40 DTB files to Batocera
-        echo "AM40 RK3399 Batocera DTB installer for kernel 6.14.5"
+# Script to install AM40 DTB files to Batocera
+echo "AM40 RK3399 Batocera DTB installer for kernel 6.14.5"
 
-        # Check if running as root
-        if [ "$(id -u)" -ne 0 ]; then
-            echo "This script must be run as root" 
-            exit 1
-        fi
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root" 
+    exit 1
+fi
 
-        # Configuration
-        BATOCERA_BOOT="/boot"
-        BATOCERA_DTB_DIR="$BATOCERA_BOOT/boot/dtbs"
-        KERNEL_VERSION="6.14.5"
+# Configuration
+BATOCERA_BOOT="/boot"
+BATOCERA_DTB_DIR="\$BATOCERA_BOOT/boot/dtbs"
+KERNEL_VERSION="6.14.5"
 
-        # Find correct DTB directory based on kernel version
-        if [ -d "$BATOCERA_DTB_DIR/$KERNEL_VERSION" ]; then
-            DTB_VERSION_DIR="$BATOCERA_DTB_DIR/$KERNEL_VERSION"
-        elif [ -d "$BATOCERA_DTB_DIR/6.14" ]; then
-            DTB_VERSION_DIR="$BATOCERA_DTB_DIR/6.14"
-            KERNEL_VERSION="6.14"
-        else
-            echo "Could not find kernel 6.14.5 DTB directory. Are you using the correct kernel version?"
-            echo "Available kernel DTB directories:"
-            ls -la "$BATOCERA_DTB_DIR"
-            exit 1
-        fi
+# Find correct DTB directory based on kernel version
+if [ -d "\$BATOCERA_DTB_DIR/\$KERNEL_VERSION" ]; then
+    DTB_VERSION_DIR="\$BATOCERA_DTB_DIR/\$KERNEL_VERSION"
+elif [ -d "\$BATOCERA_DTB_DIR/6.14" ]; then
+    DTB_VERSION_DIR="\$BATOCERA_DTB_DIR/6.14"
+    KERNEL_VERSION="6.14"
+else
+    echo "Could not find kernel 6.14.5 DTB directory. Are you using the correct kernel version?"
+    echo "Available kernel DTB directories:"
+    ls -la "\$BATOCERA_DTB_DIR"
+    exit 1
+fi
 
-        # Create the rockchip directory if it does not exist
-        ROCKCHIP_DTB_DIR="$DTB_VERSION_DIR/rockchip"
-        mkdir -p "$ROCKCHIP_DTB_DIR"
+# Create the rockchip directory if it does not exist
+ROCKCHIP_DTB_DIR="\$DTB_VERSION_DIR/rockchip"
+mkdir -p "\$ROCKCHIP_DTB_DIR"
 
-        # Backup existing DTB files
-        echo "Backing up existing DTB files..."
-        if [ -f "$ROCKCHIP_DTB_DIR/am40-user.dtb" ]; then
-            cp "$ROCKCHIP_DTB_DIR/am40-user.dtb" "$ROCKCHIP_DTB_DIR/am40-user.dtb.backup"
-        fi
+# Backup existing DTB files
+echo "Backing up existing DTB files..."
+if [ -f "\$ROCKCHIP_DTB_DIR/am40-user.dtb" ]; then
+    cp "\$ROCKCHIP_DTB_DIR/am40-user.dtb" "\$ROCKCHIP_DTB_DIR/am40-user.dtb.backup"
+fi
 
-        # Copy the custom DTB file
-        echo "Installing custom DTB file..."
-        cp "boot/dtbs/$KERNEL_VERSION/rockchip/am40-user.dtb" "$ROCKCHIP_DTB_DIR/"
+# Copy the custom DTB file
+echo "Installing custom DTB file..."
+cp "boot/dtbs/\$KERNEL_VERSION/rockchip/am40-user.dtb" "\$ROCKCHIP_DTB_DIR/"
 
-        # Update the extlinux.conf file if needed
-        EXTLINUX_CONF="$BATOCERA_BOOT/extlinux/extlinux.conf"
-        if [ -f "$EXTLINUX_CONF" ]; then
-            echo "Updating boot configuration..."
-            # Check if the FDT line is already set to our DTB
-            if grep -q "FDT /boot/dtbs/.*/rockchip/am40-user.dtb" "$EXTLINUX_CONF"; then
-                echo "Boot configuration already set to use am40-user.dtb"
-            else
-                # Make a backup of the original file
-                cp "$EXTLINUX_CONF" "$EXTLINUX_CONF.backup"
-                
-                # Update the FDT line to use our DTB
-                sed -i "s|FDT .*|FDT /boot/dtbs/$KERNEL_VERSION/rockchip/am40-user.dtb|g" "$EXTLINUX_CONF"
-                
-                echo "Updated boot configuration to use am40-user.dtb"
-            fi
-        fi
+# Update the extlinux.conf file if needed
+EXTLINUX_CONF="\$BATOCERA_BOOT/extlinux/extlinux.conf"
+if [ -f "\$EXTLINUX_CONF" ]; then
+    echo "Updating boot configuration..."
+    # Check if the FDT line is already set to our DTB
+    if grep -q "FDT /boot/dtbs/.*/rockchip/am40-user.dtb" "\$EXTLINUX_CONF"; then
+        echo "Boot configuration already set to use am40-user.dtb"
+    else
+        # Make a backup of the original file
+        cp "\$EXTLINUX_CONF" "\$EXTLINUX_CONF.backup"
+        
+        # Update the FDT line to use our DTB
+        sed -i "s|FDT .*|FDT /boot/dtbs/\$KERNEL_VERSION/rockchip/am40-user.dtb|g" "\$EXTLINUX_CONF"
+        
+        echo "Updated boot configuration to use am40-user.dtb"
+    fi
+fi
 
-        echo "Installation complete. Please reboot your system for changes to take effect."
-        echo "If the system fails to boot, you can restore the backup DTB files by booting in recovery mode."
-        EOF
+echo "Installation complete. Please reboot your system for changes to take effect."
+echo "If the system fails to boot, you can restore the backup DTB files by booting in recovery mode."
+EOF
         chmod +x dtb-package/install.sh
 
     - name: Create README
       run: |
-        cat > dtb-package/README.md << 'EOF'
-        # AM40 RK3399 DTB files for Batocera Linux 6.14.5
+        cat > dtb-package/README.md << EOF
+# AM40 RK3399 DTB files for Batocera Linux 6.14.5
 
-        This package contains the custom Device Tree Binary (DTB) files for running Batocera Linux with kernel 6.14.5 on the AM40 RK3399 board.
+This package contains the custom Device Tree Binary (DTB) files for running Batocera Linux with kernel 6.14.5 on the AM40 RK3399 board.
 
-        ## Installation
+## Installation
 
-        1. Extract this package to a USB drive or directly to your Batocera system
-        2. Run the install script as root:
-           ```
-           chmod +x install.sh
-           sudo ./install.sh
-           ```
-        3. Reboot your system
+1. Extract this package to a USB drive or directly to your Batocera system
+2. Run the install script as root:
+   \`\`\`
+   chmod +x install.sh
+   sudo ./install.sh
+   \`\`\`
+3. Reboot your system
 
-        ## Manual Installation
+## Manual Installation
 
-        If you prefer to install manually:
+If you prefer to install manually:
 
-        1. Copy the DTB file to the correct location:
-           ```
-           sudo cp boot/dtbs/6.14.5/rockchip/am40-user.dtb /boot/boot/dtbs/6.14.5/rockchip/
-           ```
-           
-        2. Update your boot configuration in `/boot/extlinux/extlinux.conf` to use the new DTB:
-           ```
-           FDT /boot/dtbs/6.14.5/rockchip/am40-user.dtb
-           ```
+1. Copy the DTB file to the correct location:
+   \`\`\`
+   sudo cp boot/dtbs/6.14.5/rockchip/am40-user.dtb /boot/boot/dtbs/6.14.5/rockchip/
+   \`\`\`
+   
+2. Update your boot configuration in \`/boot/extlinux/extlinux.conf\` to use the new DTB:
+   \`\`\`
+   FDT /boot/dtbs/6.14.5/rockchip/am40-user.dtb
+   \`\`\`
 
-        3. Reboot your system
+3. Reboot your system
 
-        ## Recovery
+## Recovery
 
-        If your system fails to boot after installing these files, boot in recovery mode and restore the original DTB files from the backup.
-        EOF
+If your system fails to boot after installing these files, boot in recovery mode and restore the original DTB files from the backup.
+EOF
 
     - name: Create DTB package
       run: |
