@@ -57,8 +57,8 @@ jobs:
         mkdir -p dtb-package/boot/dtbs/${KERNEL_VERSION}/rockchip
         cp build/am40-user.dtb dtb-package/boot/dtbs/${KERNEL_VERSION}/rockchip/
         
-        # Create install script
-        cat > dtb-package/install.sh << 'EOF'
+        # Create install script - using | for proper YAML multiline string
+        cat > dtb-package/install.sh << 'EOFSCRIPT'
 #!/bin/bash
 set -e
 
@@ -123,12 +123,12 @@ fi
 
 echo "Installation complete. Please reboot your system for changes to take effect."
 echo "If the system fails to boot, you can restore the backup DTB files by booting in recovery mode."
-EOF
+EOFSCRIPT
         
         chmod +x dtb-package/install.sh
         
-        # Create README
-        cat > dtb-package/README.md << 'EOF'
+        # Create README - using different EOF marker
+        cat > dtb-package/README.md << 'EOFREADME'
 # AM40 RK3399 DTB files for Batocera Linux 6.14.5
 
 This package contains the custom Device Tree Binary (DTB) files for running Batocera Linux with kernel 6.14.5 on the AM40 RK3399 board.
@@ -162,7 +162,7 @@ If you prefer to install manually:
 ## Recovery
 
 If your system fails to boot after installing these files, boot in recovery mode and restore the original DTB files from the backup.
-EOF
+EOFREADME
         
         # Create archive
         cd dtb-package
@@ -192,4 +192,4 @@ EOF
           build/am40-user.dtb
           build/am40-dtb-*.tar.gz
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
