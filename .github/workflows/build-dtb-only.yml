@@ -170,7 +170,7 @@ jobs:
         ls -la build/
 
     - name: Upload DTB artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: am40-dtb-files
         path: |
