@@ -483,15 +483,32 @@ jobs:
         echo "Creating simplified test DTS with fixed source files..."
         mkdir -p test-build
         
-        # 使用已修复的源文件创建测试DTS，避免heredoc语法
+        # 创建一个完整的测试DTS文件，包含所有必要节点
         echo "/dts-v1/;" > test-build/test.dts
         echo "" >> test-build/test.dts
         echo "/ {" >> test-build/test.dts
         echo "    compatible = \"rockchip,rk3399-am40\", \"rockchip,rk3399\";" >> test-build/test.dts
         echo "    model = \"Rockchip RK3399 Board rev2 (AM40)\";" >> test-build/test.dts
+        echo "" >> test-build/test.dts
+        echo "    /* 先定义HDMI节点，这样才能在后面引用它 */" >> test-build/test.dts
+        echo "    hdmi: hdmi@ff940000 {" >> test-build/test.dts
+        echo "        compatible = \"rockchip,rk3399-dw-hdmi\";" >> test-build/test.dts
+        echo "        reg = <0x0 0xff940000 0x0 0x20000>;" >> test-build/test.dts
+        echo "    };" >> test-build/test.dts
+        echo "" >> test-build/test.dts
+        echo "    /* 定义I2C3节点，这样HDMI节点可以引用它 */" >> test-build/test.dts
+        echo "    i2c3: i2c@ff150000 {" >> test-build/test.dts
+        echo "        compatible = \"rockchip,rk3399-i2c\";" >> test-build/test.dts
+        echo "        reg = <0x0 0xff150000 0x0 0x1000>;" >> test-build/test.dts
+        echo "        status = \"okay\";" >> test-build/test.dts
+        echo "        #address-cells = <1>;" >> test-build/test.dts
+        echo "        #size-cells = <0>;" >> test-build/test.dts
+        echo "    };" >> test-build/test.dts
         echo "};" >> test-build/test.dts
+        echo "" >> test-build/test.dts
         
-        # 添加HDMI节点(之前出错的部分)
+        # 现在我们可以使用&hdmi引用之前定义的节点
+        echo "/* 使用扩展语法修改先前定义的hdmi节点 */" >> test-build/test.dts
         echo "&hdmi {" >> test-build/test.dts
         echo "    pinctrl-names = \"default\";" >> test-build/test.dts
         echo "    #address-cells = <1>;" >> test-build/test.dts
@@ -503,11 +520,11 @@ jobs:
         echo "    rockchip,hdmi_video_source = <0>;" >> test-build/test.dts
         echo "    rockchip,phy-table = <" >> test-build/test.dts
         echo "        /* 频率(Hz)   Reg0xXX   通道  电气参数 */" >> test-build/test.dts
-        echo "        74250000    0x8009    4     0x272   /* 1080p60 */" >> test-build/test.dts
-        echo "        165000000   0x802b    4     0x209   /* 2K60 */" >> test-build/test.dts
-        echo "        297000000   0x8039    4     0x28d   /* 4K60 */" >> test-build/test.dts
-        echo "        594000000   0x8039    0     0x19d   /* 保留 */" >> test-build/test.dts
-        echo "        0           0         0     0       /* 结束标志 */" >> test-build/test.dts
+        echo "        74250000    0x8009    4     0x272     /* 1080p60 */" >> test-build/test.dts
+        echo "        165000000   0x802b    4     0x209     /* 2K60 */" >> test-build/test.dts
+        echo "        297000000   0x8039    4     0x28d     /* 4K60 */" >> test-build/test.dts
+        echo "        594000000   0x8039    0     0x19d     /* 保留 */" >> test-build/test.dts
+        echo "        0           0         0     0         /* 结束标志 */" >> test-build/test.dts
         echo "    >;" >> test-build/test.dts
         echo "    status = \"okay\";" >> test-build/test.dts
         echo "};" >> test-build/test.dts
