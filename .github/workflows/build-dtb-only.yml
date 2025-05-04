@@ -273,7 +273,7 @@ jobs:
         mkdir -p direct-test
         
         # 创建一个简单的独立DTS文件，仅包含必要的内容
-        cat > direct-test/simple-am40.dts << 'EOF'
+        cat > direct-test/simple-am40.dts << EOF
 /dts-v1/;
 
 / {
@@ -328,7 +328,7 @@ EOF
           echo "Simple DTB compilation failed. Trying more simplified approach..."
           
           # 如果简单版本失败，尝试最小版本
-          cat > direct-test/minimal.dts << 'EOF'
+          cat > direct-test/minimal.dts << EOF
 /dts-v1/;
 
 / {
