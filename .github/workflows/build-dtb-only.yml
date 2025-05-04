@@ -51,9 +51,13 @@ jobs:
         echo "Listing key directories from kernel source:"
         ls -la linux-${KERNEL_VERSION}/arch/arm64/boot/dts/rockchip/
         
-        echo "Copying RK3399 dtsi files..."
-        cp linux-${KERNEL_VERSION}/arch/arm64/boot/dts/rockchip/rk3399*.dtsi arch/arm64/boot/dts/rockchip/
-        cp linux-${KERNEL_VERSION}/arch/arm64/boot/dts/rockchip/rk3399*.h arch/arm64/boot/dts/rockchip/ || true
+        echo "Copying all Rockchip DTS files (not just RK3399)..."
+        cp linux-${KERNEL_VERSION}/arch/arm64/boot/dts/rockchip/*.dtsi arch/arm64/boot/dts/rockchip/ || true
+        cp linux-${KERNEL_VERSION}/arch/arm64/boot/dts/rockchip/*.h arch/arm64/boot/dts/rockchip/ || true
+        
+        echo "Copying base ARM64 DTS include files..."
+        mkdir -p arch/arm64/boot/dts/include
+        cp -r linux-${KERNEL_VERSION}/arch/arm64/boot/dts/include/* arch/arm64/boot/dts/include/ || true
         
         echo "Copying dt-bindings..."
         cp -r linux-${KERNEL_VERSION}/include/dt-bindings include/
@@ -68,14 +72,30 @@ jobs:
         ln -sf ../../include/linux include/linux
         ln -sf ../include/uapi include/uapi
         
-        echo "Cleaning up..."
-        rm -rf linux-${KERNEL_VERSION} linux-${KERNEL_VERSION}.tar.xz
+        echo "Double-checking critical files..."
+        if [ ! -f "arch/arm64/boot/dts/rockchip/rk3399.dtsi" ]; then
+          echo "WARNING: rk3399.dtsi is missing, looking deeper..."
+          find linux-${KERNEL_VERSION} -name "rk3399.dtsi" -type f
+          # Try to find it directly
+          RK3399_DTSI=$(find linux-${KERNEL_VERSION} -name "rk3399.dtsi" -type f | head -1)
+          if [ ! -z "$RK3399_DTSI" ]; then
+            echo "Found $RK3399_DTSI, copying to our directory..."
+            cp "$RK3399_DTSI" arch/arm64/boot/dts/rockchip/
+          fi
+        fi
+        
+        echo "Cleaning up source archive..."
+        rm -f linux-${KERNEL_VERSION}.tar.xz
         
         echo "Final directory structure for RK3399 DTS files:"
         find arch -type f
         
         echo "Final include structure:"
         find include -type d | sort
+        
+        # 完成文件复制后清理
+        echo "Final cleanup of kernel source..."
+        rm -rf linux-${KERNEL_VERSION}
 
     - name: Create Android DTSI file
       run: |
@@ -129,12 +149,12 @@ jobs:
       run: |
         echo "Creating modified DTS files with corrected include paths..."
         
-        # Update includes in rk3399-am40.dtsi
+        # Update includes in rk3399-am40.dtsi - 使用相对路径
         echo '#include <dt-bindings/pwm/pwm.h>' > rk3399-am40-modified.dtsi
         echo '#include <dt-bindings/input/input.h>' >> rk3399-am40-modified.dtsi
-        echo '#include "arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> rk3399-am40-modified.dtsi
-        echo '#include "arch/arm64/boot/dts/rockchip/rk3399-android.dtsi"' >> rk3399-am40-modified.dtsi
-        echo '#include "arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi"' >> rk3399-am40-modified.dtsi
+        echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> rk3399-am40-modified.dtsi
+        echo '#include "./arch/arm64/boot/dts/rockchip/rk3399-android.dtsi"' >> rk3399-am40-modified.dtsi
+        echo '#include "./arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi"' >> rk3399-am40-modified.dtsi
         grep -v "#include" rk3399-am40.dtsi >> rk3399-am40-modified.dtsi
         
         # Update includes in am40-user.dts
@@ -157,33 +177,74 @@ jobs:
         echo "Modified am40-dp.dtsi:"
         head -n 10 am40-dp-modified.dtsi
 
-    - name: Compile DTB file
+    - name: Check DTS files existence
       run: |
-        echo "Preprocessing modified DTS file..."
-        cpp -nostdinc -I. -undef -x assembler-with-cpp am40-user-modified.dts build/am40-user.preprocessed.dts || true
+        echo "Verifying all necessary DTSI files exist:"
+        ls -la arch/arm64/boot/dts/rockchip/*.dtsi
         
-        echo "Compiling DTB directly..."
-        dtc -I dts -O dtb -o build/am40-user.dtb am40-user-modified.dts || true
+        # Check rk3399.dtsi exists
+        if [ ! -f "arch/arm64/boot/dts/rockchip/rk3399.dtsi" ]; then
+          echo "ERROR: rk3399.dtsi is missing! This is a critical file."
+          exit 1
+        fi
         
-        # If direct compilation failed, try a simplified approach
+        echo "Include directories structure:"
+        find include -type d | sort
+        
+        echo "Checking header file availability:"
+        ls -la include/dt-bindings/pwm/ || echo "PWM header missing"
+        ls -la include/dt-bindings/input/ || echo "Input header missing"
+
+    - name: Compile DTB file with detailed logging
+      run: |
+        echo "Preprocessing modified DTS file with more include paths..."
+        cpp -v -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user-modified.dts build/am40-user.preprocessed.dts 2> build/cpp-errors.log || cat build/cpp-errors.log
+        
+        echo "Preprocessed DTS file (first 50 lines):"
+        head -n 50 build/am40-user.preprocessed.dts
+        
+        echo "Compiling DTB directly with verbose output..."
+        dtc -v -I dts -O dtb -o build/am40-user.dtb am40-user-modified.dts 2> build/dtc-errors.log || cat build/dtc-errors.log
+        
+        # If direct compilation failed, let's check exactly why
         if [ ! -f "build/am40-user.dtb" ]; then
-          echo "Direct compilation failed. Creating simplified DTS file..."
+          echo "Direct compilation failed. Showing errors:"
+          cat build/cpp-errors.log
+          cat build/dtc-errors.log
           
-          # Create a very simplified version for testing
-          echo '/dts-v1/;' > build/simplified.dts
-          echo '' >> build/simplified.dts
-          echo '/ {' >> build/simplified.dts
-          echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/simplified.dts
-          echo '    ' >> build/simplified.dts
-          echo '    model = "Rockchip RK3399 Board rev2 (BOX)";' >> build/simplified.dts
-          echo '};' >> build/simplified.dts
+          echo "Trying to compile with include paths explicitly provided..."
+          cpp -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user-modified.dts | dtc -I dts -O dtb -o build/am40-user.dtb
           
-          echo "Compiling simplified DTB..."
-          dtc -I dts -O dtb -o build/am40-user.dtb build/simplified.dts
+          # Only use the simplified fallback if absolutely necessary
+          if [ ! -f "build/am40-user.dtb" ]; then
+            echo "All compilation attempts failed. Creating simplified DTS file as last resort..."
+            
+            # Create a very simplified version for testing
+            echo '/dts-v1/;' > build/simplified.dts
+            echo '' >> build/simplified.dts
+            echo '/ {' >> build/simplified.dts
+            echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/simplified.dts
+            echo '    ' >> build/simplified.dts
+            echo '    model = "Rockchip RK3399 Board rev2 (BOX)";' >> build/simplified.dts
+            echo '};' >> build/simplified.dts
+            
+            echo "Compiling simplified DTB..."
+            dtc -I dts -O dtb -o build/am40-user.dtb build/simplified.dts
+          fi
         fi
         
         echo "DTB compilation result:"
         ls -la build/
+        echo "DTB file size:"
+        stat -c %s build/am40-user.dtb
+        
+        # 分析DTB文件内容
+        echo "Analyzing DTB file content..."
+        dtc -I dtb -O dts -o build/am40-user-decompiled.dts build/am40-user.dtb
+        echo "DTB decompiled to DTS (first 50 lines):"
+        head -n 50 build/am40-user-decompiled.dts
+        echo "DTB file node count:"
+        grep -c "^[ \t]*[a-zA-Z0-9_].*{" build/am40-user-decompiled.dts
 
     - name: Create directory structure for package
       run: |
