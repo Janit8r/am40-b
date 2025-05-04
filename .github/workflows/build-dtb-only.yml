@@ -102,18 +102,18 @@ jobs:
         if [ ! -f "arch/arm64/boot/dts/rockchip/rk3399-android.dtsi" ]; then
           echo "Creating RK3399 Android DTSI file..."
           mkdir -p arch/arm64/boot/dts/rockchip
-          echo '/* ' > arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo ' * Minimal RK3399 Android DTSI for compilation' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo ' */' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '#ifndef __DTS_ARM64_ROCKCHIP_RK3399_ANDROID_H' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '#define __DTS_ARM64_ROCKCHIP_RK3399_ANDROID_H' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '/ {' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '    /* Minimal definitions for Android requirements */' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '    compatible = "rockchip,android", "rockchip,rk3399";' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '};' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
-          echo '#endif' >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "/* " > arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo " * Minimal RK3399 Android DTSI for compilation" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo " */" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "#ifndef __DTS_ARM64_ROCKCHIP_RK3399_ANDROID_H" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "#define __DTS_ARM64_ROCKCHIP_RK3399_ANDROID_H" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "/ {" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "    /* Minimal definitions for Android requirements */" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "    compatible = \"rockchip,android\", \"rockchip,rk3399\";" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "};" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
+          echo "#endif" >> arch/arm64/boot/dts/rockchip/rk3399-android.dtsi
         fi
 
     - name: Create OPP DTSI file
@@ -121,28 +121,28 @@ jobs:
         if [ ! -f "arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi" ]; then
           echo "Creating RK3399 OPP DTSI file..."
           mkdir -p arch/arm64/boot/dts/rockchip
-          echo '/*' > arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo ' * Minimal RK3399 OPP DTSI for compilation' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo ' */' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '#ifndef __DTS_ARM64_ROCKCHIP_RK3399_OPP_H' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '#define __DTS_ARM64_ROCKCHIP_RK3399_OPP_H' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '/ {' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '    /* Minimal definitions for OPP table */' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '    cpu_l0: cpu@0 {' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '        device_type = "cpu";' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '        compatible = "arm,cortex-a53";' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '        reg = <0x0 0x0>;' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '        operating-points-v2 = <&cluster0_opp>;' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '    };' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '    ' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '    cluster0_opp: opp-table0 {' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '        compatible = "operating-points-v2";' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '        opp-shared;' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '    };' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '};' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
-          echo '#endif' >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "/*" > arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo " * Minimal RK3399 OPP DTSI for compilation" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo " */" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "#ifndef __DTS_ARM64_ROCKCHIP_RK3399_OPP_H" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "#define __DTS_ARM64_ROCKCHIP_RK3399_OPP_H" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "/ {" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "    /* Minimal definitions for OPP table */" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "    cpu_l0: cpu@0 {" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "        device_type = \"cpu\";" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "        compatible = \"arm,cortex-a53\";" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "        reg = <0x0 0x0>;" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "        operating-points-v2 = <&cluster0_opp>;" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "    };" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "    " >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "    cluster0_opp: opp-table0 {" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "        compatible = \"operating-points-v2\";" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "        opp-shared;" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "    };" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "};" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
+          echo "#endif" >> arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi
         fi
 
     - name: Create modified DTS files
@@ -150,11 +150,11 @@ jobs:
         echo "Creating modified DTS files with corrected include paths..."
         
         # Update includes in rk3399-am40.dtsi - 使用相对路径
-        echo '#include <dt-bindings/pwm/pwm.h>' > rk3399-am40-modified.dtsi
-        echo '#include <dt-bindings/input/input.h>' >> rk3399-am40-modified.dtsi
-        echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> rk3399-am40-modified.dtsi
-        echo '#include "./arch/arm64/boot/dts/rockchip/rk3399-android.dtsi"' >> rk3399-am40-modified.dtsi
-        echo '#include "./arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi"' >> rk3399-am40-modified.dtsi
+        echo "#include <dt-bindings/pwm/pwm.h>" > rk3399-am40-modified.dtsi
+        echo "#include <dt-bindings/input/input.h>" >> rk3399-am40-modified.dtsi
+        echo "#include \"./arch/arm64/boot/dts/rockchip/rk3399.dtsi\"" >> rk3399-am40-modified.dtsi
+        echo "#include \"./arch/arm64/boot/dts/rockchip/rk3399-android.dtsi\"" >> rk3399-am40-modified.dtsi
+        echo "#include \"./arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi\"" >> rk3399-am40-modified.dtsi
         
         # 处理和修复原始DTSI文件中的潜在语法错误
         echo "Processing original DTSI and fixing potential syntax errors..."
@@ -212,9 +212,9 @@ jobs:
         grep -n ",[ \t]*}" rk3399-am40-modified.dtsi || echo "No comma before closing brace found"
         
         # Update includes in am40-user.dts
-        echo '/dts-v1/;' > am40-user-modified.dts
-        echo '#include "rk3399-am40-modified.dtsi"' >> am40-user-modified.dts
-        echo '#include "am40-dp-modified.dtsi"' >> am40-user-modified.dts
+        echo "/dts-v1/;" > am40-user-modified.dts
+        echo "#include \"rk3399-am40-modified.dtsi\"" >> am40-user-modified.dts
+        echo "#include \"am40-dp-modified.dtsi\"" >> am40-user-modified.dts
         
         # 处理am40-user.dts中可能的语法错误
         echo "Processing am40-user.dts for syntax errors..."
@@ -225,7 +225,7 @@ jobs:
         cat am40-user-content.txt >> am40-user-modified.dts
         
         # Update includes in am40-dp.dtsi
-        echo '#include "rk3399-am40-modified.dtsi"' > am40-dp-modified.dtsi
+        echo "#include \"rk3399-am40-modified.dtsi\"" > am40-dp-modified.dtsi
         
         # 处理am40-dp.dtsi中可能的语法错误
         echo "Processing am40-dp.dtsi for syntax errors..."
@@ -272,48 +272,46 @@ jobs:
         echo "Creating a direct compilation test with minimal dependencies..."
         mkdir -p direct-test
         
-        # 创建一个简单的独立DTS文件，仅包含必要的内容
-        cat > direct-test/simple-am40.dts << EOF
-/dts-v1/;
-
-/ {
-    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";
-    model = "Rockchip RK3399 Board rev2 (AM40)";
-    
-    #address-cells = <2>;
-    #size-cells = <2>;
-    
-    chosen { };
-    
-    memory@0 {
-        device_type = "memory";
-        reg = <0x0 0x0 0x0 0x40000000>;
-    };
-    
-    hdmi: hdmi@ff940000 {
-        compatible = "rockchip,rk3399-dw-hdmi";
-        reg = <0x0 0xff940000 0x0 0x20000>;
-        status = "okay";
-        ddc-i2c-bus = <&i2c3>;
-        rockchip,phy-table = <
-            /* 频率(Hz)    寄存器值   通道值   电参数    */
-            74250000       0x8009     4        0x272     /* 1080p60 */
-            165000000      0x802b     4        0x209     /* 2K60 */
-            297000000      0x8039     4        0x28d     /* 4K60 */
-            594000000      0x8039     0        0x19d     /* 保留 */
-            0              0          0        0         /* 结束标记 */
-        >;
-    };
-    
-    i2c3: i2c@ff150000 {
-        compatible = "rockchip,rk3399-i2c";
-        reg = <0x0 0xff150000 0x0 0x1000>;
-        status = "okay";
-        #address-cells = <1>;
-        #size-cells = <0>;
-    };
-};
-EOF
+        # 创建一个简单的独立DTS文件，不使用heredoc语法
+        echo "/dts-v1/;" > direct-test/simple-am40.dts
+        echo "" >> direct-test/simple-am40.dts
+        echo "/ {" >> direct-test/simple-am40.dts
+        echo "    compatible = \"rockchip,rk3399-am40\", \"rockchip,rk3399\";" >> direct-test/simple-am40.dts
+        echo "    model = \"Rockchip RK3399 Board rev2 (AM40)\";" >> direct-test/simple-am40.dts
+        echo "    " >> direct-test/simple-am40.dts
+        echo "    #address-cells = <2>;" >> direct-test/simple-am40.dts
+        echo "    #size-cells = <2>;" >> direct-test/simple-am40.dts
+        echo "    " >> direct-test/simple-am40.dts
+        echo "    chosen { };" >> direct-test/simple-am40.dts
+        echo "    " >> direct-test/simple-am40.dts
+        echo "    memory@0 {" >> direct-test/simple-am40.dts
+        echo "        device_type = \"memory\";" >> direct-test/simple-am40.dts
+        echo "        reg = <0x0 0x0 0x0 0x40000000>;" >> direct-test/simple-am40.dts
+        echo "    };" >> direct-test/simple-am40.dts
+        echo "    " >> direct-test/simple-am40.dts
+        echo "    hdmi: hdmi@ff940000 {" >> direct-test/simple-am40.dts
+        echo "        compatible = \"rockchip,rk3399-dw-hdmi\";" >> direct-test/simple-am40.dts
+        echo "        reg = <0x0 0xff940000 0x0 0x20000>;" >> direct-test/simple-am40.dts
+        echo "        status = \"okay\";" >> direct-test/simple-am40.dts
+        echo "        ddc-i2c-bus = <&i2c3>;" >> direct-test/simple-am40.dts
+        echo "        rockchip,phy-table = <" >> direct-test/simple-am40.dts
+        echo "            /* 频率(Hz)    寄存器值   通道值   电参数    */" >> direct-test/simple-am40.dts
+        echo "            74250000       0x8009     4        0x272     /* 1080p60 */" >> direct-test/simple-am40.dts
+        echo "            165000000      0x802b     4        0x209     /* 2K60 */" >> direct-test/simple-am40.dts
+        echo "            297000000      0x8039     4        0x28d     /* 4K60 */" >> direct-test/simple-am40.dts
+        echo "            594000000      0x8039     0        0x19d     /* 保留 */" >> direct-test/simple-am40.dts
+        echo "            0              0          0        0         /* 结束标记 */" >> direct-test/simple-am40.dts
+        echo "        >;" >> direct-test/simple-am40.dts
+        echo "    };" >> direct-test/simple-am40.dts
+        echo "    " >> direct-test/simple-am40.dts
+        echo "    i2c3: i2c@ff150000 {" >> direct-test/simple-am40.dts
+        echo "        compatible = \"rockchip,rk3399-i2c\";" >> direct-test/simple-am40.dts
+        echo "        reg = <0x0 0xff150000 0x0 0x1000>;" >> direct-test/simple-am40.dts
+        echo "        status = \"okay\";" >> direct-test/simple-am40.dts
+        echo "        #address-cells = <1>;" >> direct-test/simple-am40.dts
+        echo "        #size-cells = <0>;" >> direct-test/simple-am40.dts
+        echo "    };" >> direct-test/simple-am40.dts
+        echo "};" >> direct-test/simple-am40.dts
         
         echo "Compiling simple DTS file..."
         dtc -I dts -O dtb -o direct-test/simple-am40.dtb direct-test/simple-am40.dts
@@ -328,14 +326,12 @@ EOF
           echo "Simple DTB compilation failed. Trying more simplified approach..."
           
           # 如果简单版本失败，尝试最小版本
-          cat > direct-test/minimal.dts << EOF
-/dts-v1/;
-
-/ {
-    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";
-    model = "Rockchip RK3399 Board rev2 (AM40)";
-};
-EOF
+          echo "/dts-v1/;" > direct-test/minimal.dts
+          echo "" >> direct-test/minimal.dts
+          echo "/ {" >> direct-test/minimal.dts
+          echo "    compatible = \"rockchip,rk3399-am40\", \"rockchip,rk3399\";" >> direct-test/minimal.dts
+          echo "    model = \"Rockchip RK3399 Board rev2 (AM40)\";" >> direct-test/minimal.dts
+          echo "};" >> direct-test/minimal.dts
           
           dtc -I dts -O dtb -o build/am40-user.dtb direct-test/minimal.dts
         fi
@@ -348,107 +344,107 @@ EOF
 
     - name: Create install script
       run: |
-        echo '#!/bin/bash' > dtb-package/install.sh
-        echo 'set -e' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Script to install AM40 DTB files to Batocera' >> dtb-package/install.sh
-        echo 'echo "AM40 RK3399 Batocera DTB installer for kernel 6.14.5"' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Check if running as root' >> dtb-package/install.sh
-        echo 'if [ "$(id -u)" -ne 0 ]; then' >> dtb-package/install.sh
-        echo '    echo "This script must be run as root" ' >> dtb-package/install.sh
-        echo '    exit 1' >> dtb-package/install.sh
-        echo 'fi' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Configuration' >> dtb-package/install.sh
-        echo 'BATOCERA_BOOT="/boot"' >> dtb-package/install.sh
-        echo 'BATOCERA_DTB_DIR="$BATOCERA_BOOT/boot/dtbs"' >> dtb-package/install.sh
-        echo 'KERNEL_VERSION="6.14.5"' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Find correct DTB directory based on kernel version' >> dtb-package/install.sh
-        echo 'if [ -d "$BATOCERA_DTB_DIR/$KERNEL_VERSION" ]; then' >> dtb-package/install.sh
-        echo '    DTB_VERSION_DIR="$BATOCERA_DTB_DIR/$KERNEL_VERSION"' >> dtb-package/install.sh
-        echo 'elif [ -d "$BATOCERA_DTB_DIR/6.14" ]; then' >> dtb-package/install.sh
-        echo '    DTB_VERSION_DIR="$BATOCERA_DTB_DIR/6.14"' >> dtb-package/install.sh
-        echo '    KERNEL_VERSION="6.14"' >> dtb-package/install.sh
-        echo 'else' >> dtb-package/install.sh
-        echo '    echo "Could not find kernel 6.14.5 DTB directory. Are you using the correct kernel version?"' >> dtb-package/install.sh
-        echo '    echo "Available kernel DTB directories:"' >> dtb-package/install.sh
-        echo '    ls -la "$BATOCERA_DTB_DIR"' >> dtb-package/install.sh
-        echo '    exit 1' >> dtb-package/install.sh
-        echo 'fi' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Create the rockchip directory if it does not exist' >> dtb-package/install.sh
-        echo 'ROCKCHIP_DTB_DIR="$DTB_VERSION_DIR/rockchip"' >> dtb-package/install.sh
-        echo 'mkdir -p "$ROCKCHIP_DTB_DIR"' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Backup existing DTB files' >> dtb-package/install.sh
-        echo 'echo "Backing up existing DTB files..."' >> dtb-package/install.sh
-        echo 'if [ -f "$ROCKCHIP_DTB_DIR/am40-user.dtb" ]; then' >> dtb-package/install.sh
-        echo '    cp "$ROCKCHIP_DTB_DIR/am40-user.dtb" "$ROCKCHIP_DTB_DIR/am40-user.dtb.backup"' >> dtb-package/install.sh
-        echo 'fi' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Copy the custom DTB file' >> dtb-package/install.sh
-        echo 'echo "Installing custom DTB file..."' >> dtb-package/install.sh
-        echo 'cp "boot/dtbs/$KERNEL_VERSION/rockchip/am40-user.dtb" "$ROCKCHIP_DTB_DIR/"' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo '# Update the extlinux.conf file if needed' >> dtb-package/install.sh
-        echo 'EXTLINUX_CONF="$BATOCERA_BOOT/extlinux/extlinux.conf"' >> dtb-package/install.sh
-        echo 'if [ -f "$EXTLINUX_CONF" ]; then' >> dtb-package/install.sh
-        echo '    echo "Updating boot configuration..."' >> dtb-package/install.sh
-        echo '    # Check if the FDT line is already set to our DTB' >> dtb-package/install.sh
-        echo '    if grep -q "FDT /boot/dtbs/.*/rockchip/am40-user.dtb" "$EXTLINUX_CONF"; then' >> dtb-package/install.sh
-        echo '        echo "Boot configuration already set to use am40-user.dtb"' >> dtb-package/install.sh
-        echo '    else' >> dtb-package/install.sh
-        echo '        # Make a backup of the original file' >> dtb-package/install.sh
-        echo '        cp "$EXTLINUX_CONF" "$EXTLINUX_CONF.backup"' >> dtb-package/install.sh
-        echo '        ' >> dtb-package/install.sh
-        echo '        # Update the FDT line to use our DTB' >> dtb-package/install.sh
-        echo '        sed -i "s|FDT .*|FDT /boot/dtbs/$KERNEL_VERSION/rockchip/am40-user.dtb|g" "$EXTLINUX_CONF"' >> dtb-package/install.sh
-        echo '        ' >> dtb-package/install.sh
-        echo '        echo "Updated boot configuration to use am40-user.dtb"' >> dtb-package/install.sh
-        echo '    fi' >> dtb-package/install.sh
-        echo 'fi' >> dtb-package/install.sh
-        echo '' >> dtb-package/install.sh
-        echo 'echo "Installation complete. Please reboot your system for changes to take effect."' >> dtb-package/install.sh
-        echo 'echo "If the system fails to boot, you can restore the backup DTB files by booting in recovery mode."' >> dtb-package/install.sh
+        echo "#!/bin/bash" > dtb-package/install.sh
+        echo "set -e" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Script to install AM40 DTB files to Batocera" >> dtb-package/install.sh
+        echo "echo \"AM40 RK3399 Batocera DTB installer for kernel 6.14.5\"" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Check if running as root" >> dtb-package/install.sh
+        echo "if [ \"\$(id -u)\" -ne 0 ]; then" >> dtb-package/install.sh
+        echo "    echo \"This script must be run as root\" " >> dtb-package/install.sh
+        echo "    exit 1" >> dtb-package/install.sh
+        echo "fi" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Configuration" >> dtb-package/install.sh
+        echo "BATOCERA_BOOT=\"/boot\"" >> dtb-package/install.sh
+        echo "BATOCERA_DTB_DIR=\"\$BATOCERA_BOOT/boot/dtbs\"" >> dtb-package/install.sh
+        echo "KERNEL_VERSION=\"6.14.5\"" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Find correct DTB directory based on kernel version" >> dtb-package/install.sh
+        echo "if [ -d \"\$BATOCERA_DTB_DIR/\$KERNEL_VERSION\" ]; then" >> dtb-package/install.sh
+        echo "    DTB_VERSION_DIR=\"\$BATOCERA_DTB_DIR/\$KERNEL_VERSION\"" >> dtb-package/install.sh
+        echo "elif [ -d \"\$BATOCERA_DTB_DIR/6.14\" ]; then" >> dtb-package/install.sh
+        echo "    DTB_VERSION_DIR=\"\$BATOCERA_DTB_DIR/6.14\"" >> dtb-package/install.sh
+        echo "    KERNEL_VERSION=\"6.14\"" >> dtb-package/install.sh
+        echo "else" >> dtb-package/install.sh
+        echo "    echo \"Could not find kernel 6.14.5 DTB directory. Are you using the correct kernel version?\"" >> dtb-package/install.sh
+        echo "    echo \"Available kernel DTB directories:\"" >> dtb-package/install.sh
+        echo "    ls -la \"\$BATOCERA_DTB_DIR\"" >> dtb-package/install.sh
+        echo "    exit 1" >> dtb-package/install.sh
+        echo "fi" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Create the rockchip directory if it does not exist" >> dtb-package/install.sh
+        echo "ROCKCHIP_DTB_DIR=\"\$DTB_VERSION_DIR/rockchip\"" >> dtb-package/install.sh
+        echo "mkdir -p \"\$ROCKCHIP_DTB_DIR\"" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Backup existing DTB files" >> dtb-package/install.sh
+        echo "echo \"Backing up existing DTB files...\"" >> dtb-package/install.sh
+        echo "if [ -f \"\$ROCKCHIP_DTB_DIR/am40-user.dtb\" ]; then" >> dtb-package/install.sh
+        echo "    cp \"\$ROCKCHIP_DTB_DIR/am40-user.dtb\" \"\$ROCKCHIP_DTB_DIR/am40-user.dtb.backup\"" >> dtb-package/install.sh
+        echo "fi" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Copy the custom DTB file" >> dtb-package/install.sh
+        echo "echo \"Installing custom DTB file...\"" >> dtb-package/install.sh
+        echo "cp \"boot/dtbs/\$KERNEL_VERSION/rockchip/am40-user.dtb\" \"\$ROCKCHIP_DTB_DIR/\"" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "# Update the extlinux.conf file if needed" >> dtb-package/install.sh
+        echo "EXTLINUX_CONF=\"\$BATOCERA_BOOT/extlinux/extlinux.conf\"" >> dtb-package/install.sh
+        echo "if [ -f \"\$EXTLINUX_CONF\" ]; then" >> dtb-package/install.sh
+        echo "    echo \"Updating boot configuration...\"" >> dtb-package/install.sh
+        echo "    # Check if the FDT line is already set to our DTB" >> dtb-package/install.sh
+        echo "    if grep -q \"FDT /boot/dtbs/.*/rockchip/am40-user.dtb\" \"\$EXTLINUX_CONF\"; then" >> dtb-package/install.sh
+        echo "        echo \"Boot configuration already set to use am40-user.dtb\"" >> dtb-package/install.sh
+        echo "    else" >> dtb-package/install.sh
+        echo "        # Make a backup of the original file" >> dtb-package/install.sh
+        echo "        cp \"\$EXTLINUX_CONF\" \"\$EXTLINUX_CONF.backup\"" >> dtb-package/install.sh
+        echo "        " >> dtb-package/install.sh
+        echo "        # Update the FDT line to use our DTB" >> dtb-package/install.sh
+        echo "        sed -i \"s|FDT .*|FDT /boot/dtbs/\$KERNEL_VERSION/rockchip/am40-user.dtb|g\" \"\$EXTLINUX_CONF\"" >> dtb-package/install.sh
+        echo "        " >> dtb-package/install.sh
+        echo "        echo \"Updated boot configuration to use am40-user.dtb\"" >> dtb-package/install.sh
+        echo "    fi" >> dtb-package/install.sh
+        echo "fi" >> dtb-package/install.sh
+        echo "" >> dtb-package/install.sh
+        echo "echo \"Installation complete. Please reboot your system for changes to take effect.\"" >> dtb-package/install.sh
+        echo "echo \"If the system fails to boot, you can restore the backup DTB files by booting in recovery mode.\"" >> dtb-package/install.sh
         chmod +x dtb-package/install.sh
 
     - name: Create README
       run: |
-        echo '# AM40 RK3399 DTB files for Batocera Linux 6.14.5' > dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo 'This package contains the custom Device Tree Binary (DTB) files for running Batocera Linux with kernel 6.14.5 on the AM40 RK3399 board.' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo '## Installation' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo '1. Extract this package to a USB drive or directly to your Batocera system' >> dtb-package/README.md
-        echo '2. Run the install script as root:' >> dtb-package/README.md
-        echo '   ```' >> dtb-package/README.md
-        echo '   chmod +x install.sh' >> dtb-package/README.md
-        echo '   sudo ./install.sh' >> dtb-package/README.md
-        echo '   ```' >> dtb-package/README.md
-        echo '3. Reboot your system' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo '## Manual Installation' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo 'If you prefer to install manually:' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo '1. Copy the DTB file to the correct location:' >> dtb-package/README.md
-        echo '   ```' >> dtb-package/README.md
-        echo '   sudo cp boot/dtbs/6.14.5/rockchip/am40-user.dtb /boot/boot/dtbs/6.14.5/rockchip/' >> dtb-package/README.md
-        echo '   ```' >> dtb-package/README.md
-        echo '   ' >> dtb-package/README.md
-        echo '2. Update your boot configuration in `/boot/extlinux/extlinux.conf` to use the new DTB:' >> dtb-package/README.md
-        echo '   ```' >> dtb-package/README.md
-        echo '   FDT /boot/dtbs/6.14.5/rockchip/am40-user.dtb' >> dtb-package/README.md
-        echo '   ```' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo '3. Reboot your system' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo '## Recovery' >> dtb-package/README.md
-        echo '' >> dtb-package/README.md
-        echo 'If your system fails to boot after installing these files, boot in recovery mode and restore the original DTB files from the backup.' >> dtb-package/README.md
+        echo "# AM40 RK3399 DTB files for Batocera Linux 6.14.5" > dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "This package contains the custom Device Tree Binary (DTB) files for running Batocera Linux with kernel 6.14.5 on the AM40 RK3399 board." >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "## Installation" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "1. Extract this package to a USB drive or directly to your Batocera system" >> dtb-package/README.md
+        echo "2. Run the install script as root:" >> dtb-package/README.md
+        echo "   ```" >> dtb-package/README.md
+        echo "   chmod +x install.sh" >> dtb-package/README.md
+        echo "   sudo ./install.sh" >> dtb-package/README.md
+        echo "   ```" >> dtb-package/README.md
+        echo "3. Reboot your system" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "## Manual Installation" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "If you prefer to install manually:" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "1. Copy the DTB file to the correct location:" >> dtb-package/README.md
+        echo "   ```" >> dtb-package/README.md
+        echo "   sudo cp boot/dtbs/6.14.5/rockchip/am40-user.dtb /boot/boot/dtbs/6.14.5/rockchip/" >> dtb-package/README.md
+        echo "   ```" >> dtb-package/README.md
+        echo "   " >> dtb-package/README.md
+        echo "2. Update your boot configuration in \`/boot/extlinux/extlinux.conf\` to use the new DTB:" >> dtb-package/README.md
+        echo "   ```" >> dtb-package/README.md
+        echo "   FDT /boot/dtbs/6.14.5/rockchip/am40-user.dtb" >> dtb-package/README.md
+        echo "   ```" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "3. Reboot your system" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "## Recovery" >> dtb-package/README.md
+        echo "" >> dtb-package/README.md
+        echo "If your system fails to boot after installing these files, boot in recovery mode and restore the original DTB files from the backup." >> dtb-package/README.md
 
     - name: Create DTB package
       run: |
@@ -487,34 +483,34 @@ EOF
         echo "Creating simplified test DTS with fixed source files..."
         mkdir -p test-build
         
-        # 使用已修复的源文件创建测试DTS
-        echo '/dts-v1/;' > test-build/test.dts
-        echo '' >> test-build/test.dts
-        echo '/ {' >> test-build/test.dts
-        echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> test-build/test.dts
-        echo '    model = "Rockchip RK3399 Board rev2 (AM40)";' >> test-build/test.dts
-        echo '};' >> test-build/test.dts
+        # 使用已修复的源文件创建测试DTS，避免heredoc语法
+        echo "/dts-v1/;" > test-build/test.dts
+        echo "" >> test-build/test.dts
+        echo "/ {" >> test-build/test.dts
+        echo "    compatible = \"rockchip,rk3399-am40\", \"rockchip,rk3399\";" >> test-build/test.dts
+        echo "    model = \"Rockchip RK3399 Board rev2 (AM40)\";" >> test-build/test.dts
+        echo "};" >> test-build/test.dts
         
         # 添加HDMI节点(之前出错的部分)
-        echo '&hdmi {' >> test-build/test.dts
-        echo '    pinctrl-names = "default";' >> test-build/test.dts
-        echo '    #address-cells = <1>;' >> test-build/test.dts
-        echo '    #size-cells = <0>;' >> test-build/test.dts
-        echo '    #sound-dai-cells = <0>;' >> test-build/test.dts
-        echo '    ddc-i2c-bus = <&i2c3>;' >> test-build/test.dts
-        echo '    ddc-i2c-scl-high-time-ns = <9625>;' >> test-build/test.dts
-        echo '    ddc-i2c-scl-low-time-ns = <10000>;' >> test-build/test.dts
-        echo '    rockchip,hdmi_video_source = <0>;' >> test-build/test.dts
-        echo '    rockchip,phy-table = <' >> test-build/test.dts
-        echo '        /* 频率(Hz)   Reg0xXX   通道  电气参数 */' >> test-build/test.dts
-        echo '        74250000    0x8009    4     0x272   /* 1080p60 */' >> test-build/test.dts
-        echo '        165000000   0x802b    4     0x209   /* 2K60 */' >> test-build/test.dts
-        echo '        297000000   0x8039    4     0x28d   /* 4K60 */' >> test-build/test.dts
-        echo '        594000000   0x8039    0     0x19d   /* 保留 */' >> test-build/test.dts
-        echo '        0           0         0     0       /* 结束标志 */' >> test-build/test.dts
-        echo '    >;' >> test-build/test.dts
-        echo '    status = "okay";' >> test-build/test.dts
-        echo '};' >> test-build/test.dts
+        echo "&hdmi {" >> test-build/test.dts
+        echo "    pinctrl-names = \"default\";" >> test-build/test.dts
+        echo "    #address-cells = <1>;" >> test-build/test.dts
+        echo "    #size-cells = <0>;" >> test-build/test.dts
+        echo "    #sound-dai-cells = <0>;" >> test-build/test.dts
+        echo "    ddc-i2c-bus = <&i2c3>;" >> test-build/test.dts
+        echo "    ddc-i2c-scl-high-time-ns = <9625>;" >> test-build/test.dts
+        echo "    ddc-i2c-scl-low-time-ns = <10000>;" >> test-build/test.dts
+        echo "    rockchip,hdmi_video_source = <0>;" >> test-build/test.dts
+        echo "    rockchip,phy-table = <" >> test-build/test.dts
+        echo "        /* 频率(Hz)   Reg0xXX   通道  电气参数 */" >> test-build/test.dts
+        echo "        74250000    0x8009    4     0x272   /* 1080p60 */" >> test-build/test.dts
+        echo "        165000000   0x802b    4     0x209   /* 2K60 */" >> test-build/test.dts
+        echo "        297000000   0x8039    4     0x28d   /* 4K60 */" >> test-build/test.dts
+        echo "        594000000   0x8039    0     0x19d   /* 保留 */" >> test-build/test.dts
+        echo "        0           0         0     0       /* 结束标志 */" >> test-build/test.dts
+        echo "    >;" >> test-build/test.dts
+        echo "    status = \"okay\";" >> test-build/test.dts
+        echo "};" >> test-build/test.dts
         
         # 尝试编译测试DTS
         echo "Compiling test DTS file..."
