@@ -1,0 +1,27 @@
+
+#include "rk3399-am40.dtsi"
+/{
+	virtual_pd0: virtual-pd0 {
+		compatible = "linux,extcon-pd-virtual";
+		dp-det-gpios = <&gpio4 25 GPIO_ACTIVE_LOW>;
+		hdmi-5v-gpios = <&gpio4 28 GPIO_ACTIVE_LOW>;
+		vpd,init-flip = <0>;
+		vpd,init-ss = <1>;
+		vpd,init-mode = <3>;
+		
+	};
+};
+&tcphy0{
+	status = "okay";
+	extcon = <&virtual_pd0>;
+};
+&tcphy0_dp {
+	status = "okay";
+};
+&cdn_dp {
+	status = "okay";
+	extcon = <&virtual_pd0>;
+	dp_vop_sel= <1>;
+};
+
+
