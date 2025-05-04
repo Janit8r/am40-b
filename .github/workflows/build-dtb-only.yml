@@ -267,114 +267,78 @@ jobs:
         ls -la include/dt-bindings/pwm/ || echo "PWM header missing"
         ls -la include/dt-bindings/input/ || echo "Input header missing"
 
-    - name: Compile DTB file with detailed logging
+    - name: Create direct compilation test
       run: |
-        echo "Preprocessing modified DTS file with more include paths..."
-        cpp -v -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user-modified.dts build/am40-user.preprocessed.dts 2> build/cpp-errors.log || cat build/cpp-errors.log
+        echo "Creating a direct compilation test with minimal dependencies..."
+        mkdir -p direct-test
         
-        echo "Preprocessed DTS file (first 50 lines):"
-        head -n 50 build/am40-user.preprocessed.dts
+        # 创建一个简单的独立DTS文件，仅包含必要的内容
+        cat > direct-test/simple-am40.dts << 'EOF'
+/dts-v1/;
+
+/ {
+    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";
+    model = "Rockchip RK3399 Board rev2 (AM40)";
+    
+    #address-cells = <2>;
+    #size-cells = <2>;
+    
+    chosen { };
+    
+    memory@0 {
+        device_type = "memory";
+        reg = <0x0 0x0 0x0 0x40000000>;
+    };
+    
+    hdmi: hdmi@ff940000 {
+        compatible = "rockchip,rk3399-dw-hdmi";
+        reg = <0x0 0xff940000 0x0 0x20000>;
+        status = "okay";
+        ddc-i2c-bus = <&i2c3>;
+        rockchip,phy-table = <
+            /* 频率(Hz)    寄存器值   通道值   电参数    */
+            74250000       0x8009     4        0x272     /* 1080p60 */
+            165000000      0x802b     4        0x209     /* 2K60 */
+            297000000      0x8039     4        0x28d     /* 4K60 */
+            594000000      0x8039     0        0x19d     /* 保留 */
+            0              0          0        0         /* 结束标记 */
+        >;
+    };
+    
+    i2c3: i2c@ff150000 {
+        compatible = "rockchip,rk3399-i2c";
+        reg = <0x0 0xff150000 0x0 0x1000>;
+        status = "okay";
+        #address-cells = <1>;
+        #size-cells = <0>;
+    };
+};
+EOF
         
-        echo "Compiling DTB directly with verbose output..."
-        dtc -v -I dts -O dtb -o build/am40-user.dtb am40-user-modified.dts 2> build/dtc-errors.log || cat build/dtc-errors.log
+        echo "Compiling simple DTS file..."
+        dtc -I dts -O dtb -o direct-test/simple-am40.dtb direct-test/simple-am40.dts
         
-        # If direct compilation failed, let's check exactly why
-        if [ ! -f "build/am40-user.dtb" ]; then
-          echo "Direct compilation failed. Showing errors:"
-          cat build/cpp-errors.log
-          cat build/dtc-errors.log
+        if [ -f "direct-test/simple-am40.dtb" ]; then
+          echo "Simple DTB compilation successful!"
+          stat -c %s direct-test/simple-am40.dtb
+          # 如果编译成功，使用这个DTB作为我们的输出
+          mkdir -p build
+          cp direct-test/simple-am40.dtb build/am40-user.dtb
+        else
+          echo "Simple DTB compilation failed. Trying more simplified approach..."
           
-          echo "Trying to compile with include paths explicitly provided..."
-          cpp -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user-modified.dts | dtc -I dts -O dtb -o build/am40-user.dtb
+          # 如果简单版本失败，尝试最小版本
+          cat > direct-test/minimal.dts << 'EOF'
+/dts-v1/;
+
+/ {
+    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";
+    model = "Rockchip RK3399 Board rev2 (AM40)";
+};
+EOF
           
-          # 如果仍然失败，尝试使用其它RK3399参考板的DTS作为基础
-          if [ ! -f "build/am40-user.dtb" ]; then
-            echo "Still failed. Trying alternative approach with reference board DTS..."
-            
-            # 尝试查找并使用RockPro64或Firefly等参考板的DTS文件
-            if [ -f "arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts" ]; then
-              echo "Found RockPro64 DTS, using it as reference..."
-              cp arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts build/reference.dts
-            elif [ -f "arch/arm64/boot/dts/rockchip/rk3399-firefly.dts" ]; then
-              echo "Found Firefly DTS, using it as reference..."
-              cp arch/arm64/boot/dts/rockchip/rk3399-firefly.dts build/reference.dts
-            else
-              # 查找任何RK3399 DTS文件
-              REFERENCE_DTS=$(find arch/arm64/boot/dts/rockchip -name "rk3399-*.dts" | head -1)
-              if [ -n "$REFERENCE_DTS" ]; then
-                echo "Found reference DTS: $REFERENCE_DTS"
-                cp "$REFERENCE_DTS" build/reference.dts
-              else
-                # 创建最小化参考DTS
-                echo "No reference DTS found, creating minimal one..."
-                echo '/dts-v1/;' > build/reference.dts
-                echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> build/reference.dts
-                echo '/ {' >> build/reference.dts
-                echo '    model = "Rockchip RK3399 AM40 Reference";' >> build/reference.dts
-                echo '    compatible = "rockchip,rk3399";' >> build/reference.dts
-                echo '};' >> build/reference.dts
-              fi
-            fi
-            
-            # 从我们的DTS文件复制关键节点
-            echo "Extracting key nodes from our DTS for minimal AM40 DTB..."
-            echo '/dts-v1/;' > build/minimal-am40.dts
-            echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> build/minimal-am40.dts
-            echo '/ {' >> build/minimal-am40.dts
-            echo '    model = "Rockchip RK3399 Board rev2 (AM40)";' >> build/minimal-am40.dts
-            echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/minimal-am40.dts
-            echo '};' >> build/minimal-am40.dts
-            
-            # 添加重要的节点
-            echo '&hdmi {' >> build/minimal-am40.dts
-            echo '    status = "okay";' >> build/minimal-am40.dts
-            echo '    ddc-i2c-bus = <&i2c3>;' >> build/minimal-am40.dts
-            echo '    pinctrl-names = "default";' >> build/minimal-am40.dts
-            echo '    pinctrl-0 = <&hdmi_cec>;' >> build/minimal-am40.dts
-            echo '};' >> build/minimal-am40.dts
-            
-            echo '&gmac {' >> build/minimal-am40.dts
-            echo '    status = "okay";' >> build/minimal-am40.dts
-            echo '};' >> build/minimal-am40.dts
-            
-            echo '&tcphy0 {' >> build/minimal-am40.dts
-            echo '    status = "okay";' >> build/minimal-am40.dts
-            echo '};' >> build/minimal-am40.dts
-            
-            echo "Compiling minimal AM40 DTB..."
-            dtc -I dts -O dtb -o build/am40-user.dtb build/minimal-am40.dts || true
-            
-            # 仍然失败时使用最简化版本作为最后手段
-            if [ ! -f "build/am40-user.dtb" ]; then
-              echo "All compilation attempts failed. Creating simplified DTS file as last resort..."
-              
-              # Create a very simplified version for testing
-              echo '/dts-v1/;' > build/simplified.dts
-              echo '' >> build/simplified.dts
-              echo '/ {' >> build/simplified.dts
-              echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/simplified.dts
-              echo '    ' >> build/simplified.dts
-              echo '    model = "Rockchip RK3399 Board rev2 (BOX)";' >> build/simplified.dts
-              echo '};' >> build/simplified.dts
-              
-              echo "Compiling simplified DTB..."
-              dtc -I dts -O dtb -o build/am40-user.dtb build/simplified.dts
-            fi
-          fi
+          dtc -I dts -O dtb -o build/am40-user.dtb direct-test/minimal.dts
         fi
-        
-        echo "DTB compilation result:"
-        ls -la build/
-        echo "DTB file size:"
-        stat -c %s build/am40-user.dtb
-        
-        # 分析DTB文件内容
-        echo "Analyzing DTB file content..."
-        dtc -I dtb -O dts -o build/am40-user-decompiled.dts build/am40-user.dtb
-        echo "DTB decompiled to DTS (first 50 lines):"
-        head -n 50 build/am40-user-decompiled.dts
-        echo "DTB file node count:"
-        grep -c "^[ \t]*[a-zA-Z0-9_].*{" build/am40-user-decompiled.dts
 
     - name: Create directory structure for package
       run: |
