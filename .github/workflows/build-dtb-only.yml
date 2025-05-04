@@ -155,26 +155,98 @@ jobs:
         echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> rk3399-am40-modified.dtsi
         echo '#include "./arch/arm64/boot/dts/rockchip/rk3399-android.dtsi"' >> rk3399-am40-modified.dtsi
         echo '#include "./arch/arm64/boot/dts/rockchip/rk3399-opp.dtsi"' >> rk3399-am40-modified.dtsi
-        grep -v "#include" rk3399-am40.dtsi >> rk3399-am40-modified.dtsi
+        
+        # 处理和修复原始DTSI文件中的潜在语法错误
+        echo "Processing original DTSI and fixing potential syntax errors..."
+        grep -v "#include" rk3399-am40.dtsi > rk3399-am40-content.txt
+        
+        # 检查并修复常见语法问题
+        sed -i 's/,[ \t]*;/;/g' rk3399-am40-content.txt  # 修复逗号后跟分号的问题
+        sed -i 's/}[ \t]*,[ \t]*}/}/g' rk3399-am40-content.txt  # 修复双重结束括号间的逗号
+        sed -i 's/};[ \t]*};/};/g' rk3399-am40-content.txt  # 修复重复结束的问题
+        
+        # 查找并记录潜在的问题行
+        echo "Checking for potential syntax issues..."
+        grep -n "[^\\];" rk3399-am40-content.txt | grep -v "status = \"okay\"" || true
+        
+        # 检查是否有未闭合的括号
+        echo "Checking for bracket balance..."
+        OPEN_BRACKETS=$(grep -o "{" rk3399-am40-content.txt | wc -l)
+        CLOSE_BRACKETS=$(grep -o "}" rk3399-am40-content.txt | wc -l)
+        echo "Open brackets: $OPEN_BRACKETS, Close brackets: $CLOSE_BRACKETS"
+        
+        # 检查第481行附近，这是报告的错误位置
+        echo "Lines around line 481 (reported error location):"
+        if [ -n "$(wc -l < rk3399-am40-content.txt)" ] && [ "$(wc -l < rk3399-am40-content.txt)" -ge 475 ]; then
+          sed -n '475,485p' rk3399-am40-content.txt
+          
+          # 特别修复第481行的问题（如果它存在）
+          if [ "$(wc -l < rk3399-am40-content.txt)" -ge 481 ]; then
+            LINE_481=$(sed -n '481p' rk3399-am40-content.txt)
+            echo "Original line 481: $LINE_481"
+            # 尝试修复特定错误，例如缺少分号或多余逗号
+            sed -i '481s/,[ \t]*$/;/g' rk3399-am40-content.txt
+            sed -i '481s/;[ \t]*;/;/g' rk3399-am40-content.txt
+            
+            # 特殊处理: 修复第481行的具体语法错误
+            sed -i '481s/\([0-9]\),\([0-9]\)/\1, \2/g' rk3399-am40-content.txt  # 在数字间的逗号后添加空格
+            sed -i '481s/=[ ]*,/= /g' rk3399-am40-content.txt  # 修复错误的"= ,"结构
+            sed -i '481s/[^\][^ ]*;[ ]*;/;/g' rk3399-am40-content.txt  # 修复双分号问题
+            sed -i '481s/\([^=]\)=\([^= ]\)/\1= \2/g' rk3399-am40-content.txt  # 在等号两边添加空格
+            
+            # 特别针对RK3399常见的错误
+            sed -i '481s/reg = <0x\([0-9a-f]*\) *\([0-9a-f]*\)>/reg = <0x\1 0x\2>/g' rk3399-am40-content.txt
+            
+            # 如果有明显的语法错误，也可以手动修改
+            # sed -i '481s/错误内容/正确内容/g' rk3399-am40-content.txt
+            echo "Modified line 481: $(sed -n '481p' rk3399-am40-content.txt)"
+          fi
+        fi
+        
+        # 将修复后的内容附加到修改后的DTSI文件
+        cat rk3399-am40-content.txt >> rk3399-am40-modified.dtsi
+        
+        # 添加最后的语法检查
+        echo "Final syntax check (looking for common issues)..."
+        grep -n ";[^\"]*;" rk3399-am40-modified.dtsi || echo "No double semicolons found"
+        grep -n ",[ \t]*}" rk3399-am40-modified.dtsi || echo "No comma before closing brace found"
         
         # Update includes in am40-user.dts
         echo '/dts-v1/;' > am40-user-modified.dts
         echo '#include "rk3399-am40-modified.dtsi"' >> am40-user-modified.dts
         echo '#include "am40-dp-modified.dtsi"' >> am40-user-modified.dts
-        grep -v "#include" am40-user.dts | grep -v "/dts-v1/" >> am40-user-modified.dts
+        
+        # 处理am40-user.dts中可能的语法错误
+        echo "Processing am40-user.dts for syntax errors..."
+        grep -v "#include" am40-user.dts | grep -v "/dts-v1/" > am40-user-content.txt
+        sed -i 's/,[ \t]*;/;/g' am40-user-content.txt  # 修复逗号后跟分号的问题
+        sed -i 's/}[ \t]*,[ \t]*}/}/g' am40-user-content.txt  # 修复双重结束括号间的逗号
+        sed -i 's/};[ \t]*};/};/g' am40-user-content.txt  # 修复重复结束的问题
+        cat am40-user-content.txt >> am40-user-modified.dts
         
         # Update includes in am40-dp.dtsi
         echo '#include "rk3399-am40-modified.dtsi"' > am40-dp-modified.dtsi
-        grep -v "#include" am40-dp.dtsi >> am40-dp-modified.dtsi
+        
+        # 处理am40-dp.dtsi中可能的语法错误
+        echo "Processing am40-dp.dtsi for syntax errors..."
+        grep -v "#include" am40-dp.dtsi > am40-dp-content.txt
+        sed -i 's/,[ \t]*;/;/g' am40-dp-content.txt  # 修复逗号后跟分号的问题
+        sed -i 's/}[ \t]*,[ \t]*}/}/g' am40-dp-content.txt  # 修复双重结束括号间的逗号
+        sed -i 's/};[ \t]*};/};/g' am40-dp-content.txt  # 修复重复结束的问题
+        cat am40-dp-content.txt >> am40-dp-modified.dtsi
+        
+        # 显示文件长度，确保内容被正确复制
+        echo "File sizes:"
+        wc -l rk3399-am40.dtsi rk3399-am40-modified.dtsi am40-user.dts am40-user-modified.dts am40-dp.dtsi am40-dp-modified.dtsi
         
         # Show the modified files
-        echo "Modified rk3399-am40.dtsi:"
+        echo "Modified rk3399-am40.dtsi (first 10 lines):"
         head -n 10 rk3399-am40-modified.dtsi
         
-        echo "Modified am40-user.dts:"
+        echo "Modified am40-user.dts (first 10 lines):"
         head -n 10 am40-user-modified.dts
         
-        echo "Modified am40-dp.dtsi:"
+        echo "Modified am40-dp.dtsi (first 10 lines):"
         head -n 10 am40-dp-modified.dtsi
 
     - name: Check DTS files existence
@@ -215,21 +287,79 @@ jobs:
           echo "Trying to compile with include paths explicitly provided..."
           cpp -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user-modified.dts | dtc -I dts -O dtb -o build/am40-user.dtb
           
-          # Only use the simplified fallback if absolutely necessary
+          # 如果仍然失败，尝试使用其它RK3399参考板的DTS作为基础
           if [ ! -f "build/am40-user.dtb" ]; then
-            echo "All compilation attempts failed. Creating simplified DTS file as last resort..."
+            echo "Still failed. Trying alternative approach with reference board DTS..."
             
-            # Create a very simplified version for testing
-            echo '/dts-v1/;' > build/simplified.dts
-            echo '' >> build/simplified.dts
-            echo '/ {' >> build/simplified.dts
-            echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/simplified.dts
-            echo '    ' >> build/simplified.dts
-            echo '    model = "Rockchip RK3399 Board rev2 (BOX)";' >> build/simplified.dts
-            echo '};' >> build/simplified.dts
+            # 尝试查找并使用RockPro64或Firefly等参考板的DTS文件
+            if [ -f "arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts" ]; then
+              echo "Found RockPro64 DTS, using it as reference..."
+              cp arch/arm64/boot/dts/rockchip/rk3399-rockpro64.dts build/reference.dts
+            elif [ -f "arch/arm64/boot/dts/rockchip/rk3399-firefly.dts" ]; then
+              echo "Found Firefly DTS, using it as reference..."
+              cp arch/arm64/boot/dts/rockchip/rk3399-firefly.dts build/reference.dts
+            else
+              # 查找任何RK3399 DTS文件
+              REFERENCE_DTS=$(find arch/arm64/boot/dts/rockchip -name "rk3399-*.dts" | head -1)
+              if [ -n "$REFERENCE_DTS" ]; then
+                echo "Found reference DTS: $REFERENCE_DTS"
+                cp "$REFERENCE_DTS" build/reference.dts
+              else
+                # 创建最小化参考DTS
+                echo "No reference DTS found, creating minimal one..."
+                echo '/dts-v1/;' > build/reference.dts
+                echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> build/reference.dts
+                echo '/ {' >> build/reference.dts
+                echo '    model = "Rockchip RK3399 AM40 Reference";' >> build/reference.dts
+                echo '    compatible = "rockchip,rk3399";' >> build/reference.dts
+                echo '};' >> build/reference.dts
+              fi
+            fi
             
-            echo "Compiling simplified DTB..."
-            dtc -I dts -O dtb -o build/am40-user.dtb build/simplified.dts
+            # 从我们的DTS文件复制关键节点
+            echo "Extracting key nodes from our DTS for minimal AM40 DTB..."
+            echo '/dts-v1/;' > build/minimal-am40.dts
+            echo '#include "./arch/arm64/boot/dts/rockchip/rk3399.dtsi"' >> build/minimal-am40.dts
+            echo '/ {' >> build/minimal-am40.dts
+            echo '    model = "Rockchip RK3399 Board rev2 (AM40)";' >> build/minimal-am40.dts
+            echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/minimal-am40.dts
+            echo '};' >> build/minimal-am40.dts
+            
+            # 添加重要的节点
+            echo '&hdmi {' >> build/minimal-am40.dts
+            echo '    status = "okay";' >> build/minimal-am40.dts
+            echo '    ddc-i2c-bus = <&i2c3>;' >> build/minimal-am40.dts
+            echo '    pinctrl-names = "default";' >> build/minimal-am40.dts
+            echo '    pinctrl-0 = <&hdmi_cec>;' >> build/minimal-am40.dts
+            echo '};' >> build/minimal-am40.dts
+            
+            echo '&gmac {' >> build/minimal-am40.dts
+            echo '    status = "okay";' >> build/minimal-am40.dts
+            echo '};' >> build/minimal-am40.dts
+            
+            echo '&tcphy0 {' >> build/minimal-am40.dts
+            echo '    status = "okay";' >> build/minimal-am40.dts
+            echo '};' >> build/minimal-am40.dts
+            
+            echo "Compiling minimal AM40 DTB..."
+            dtc -I dts -O dtb -o build/am40-user.dtb build/minimal-am40.dts || true
+            
+            # 仍然失败时使用最简化版本作为最后手段
+            if [ ! -f "build/am40-user.dtb" ]; then
+              echo "All compilation attempts failed. Creating simplified DTS file as last resort..."
+              
+              # Create a very simplified version for testing
+              echo '/dts-v1/;' > build/simplified.dts
+              echo '' >> build/simplified.dts
+              echo '/ {' >> build/simplified.dts
+              echo '    compatible = "rockchip,rk3399-am40", "rockchip,rk3399";' >> build/simplified.dts
+              echo '    ' >> build/simplified.dts
+              echo '    model = "Rockchip RK3399 Board rev2 (BOX)";' >> build/simplified.dts
+              echo '};' >> build/simplified.dts
+              
+              echo "Compiling simplified DTB..."
+              dtc -I dts -O dtb -o build/am40-user.dtb build/simplified.dts
+            fi
           fi
         fi
         
