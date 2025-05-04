@@ -17,6 +17,11 @@ on:
         required: true
         default: '6.14.5'
 
+# 添加权限配置
+permissions:
+  contents: write
+  packages: write
+  
 jobs:
   build-dtb:
     runs-on: ubuntu-latest
