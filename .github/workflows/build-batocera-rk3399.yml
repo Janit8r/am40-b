@@ -1,0 +1,178 @@
+name: Build Batocera for RK3399 AM40 with kernel 6.14.5
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      kernel_version:
+        description: 'Linux kernel version'
+        required: true
+        default: '6.14.5'
+      debug_enabled:
+        description: 'Enable debug mode'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1440  # 24 hours max runtime
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Setup environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git device-tree-compiler bc kmod cpio flex libncurses5-dev libncursesw5-dev libssl-dev rsync wget python3 python3-pip unzip
+        sudo apt-get install -y gettext xxd file jq mtools parted dosfstools
+
+    - name: Cache Batocera sources
+      uses: actions/cache@v3
+      with:
+        path: |
+          batocera.linux
+          batocera.linux/buildroot/dl
+          batocera.linux/buildroot/output/build
+        key: ${{ runner.os }}-batocera-${{ hashFiles('am40-user.dts', 'am40-dp.dtsi', 'rk3399-am40.dtsi') }}
+        restore-keys: |
+          ${{ runner.os }}-batocera-
+
+    - name: Clone Batocera Linux repository
+      run: |
+        if [ ! -d "batocera.linux" ]; then
+          echo "Cloning Batocera repository..."
+          git clone https://github.com/batocera-linux/batocera.linux.git
+        else
+          cd batocera.linux
+          echo "Updating Batocera repository..."
+          git pull
+          cd ..
+        fi
+
+    - name: Configure Batocera build
+      run: |
+        cd batocera.linux
+        make rockchip/rk3399_defconfig
+        
+        # Set kernel version to the specified version
+        KERNEL_VERSION="${{ github.event.inputs.kernel_version || '6.14.5' }}"
+        echo "Configuring kernel version to ${KERNEL_VERSION}..."
+        sed -i "s/^BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=.*$/BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"${KERNEL_VERSION}\"/" .config
+        
+        # Enable debug packages if debug mode is enabled
+        if [[ "${{ github.event.inputs.debug_enabled }}" == "true" ]]; then
+          echo "Enabling debug mode..."
+          sed -i 's/^# BR2_ENABLE_DEBUG is not set/BR2_ENABLE_DEBUG=y/' .config
+          sed -i 's/^BR2_STRIP_strip/# BR2_STRIP_strip is not set/' .config
+          sed -i 's/^# BR2_PACKAGE_GDB is not set/BR2_PACKAGE_GDB=y/' .config
+        fi
+
+    - name: Prepare kernel sources
+      run: |
+        cd batocera.linux
+        echo "Extracting Linux kernel sources..."
+        make linux-extract
+        
+        # Create DTS directory if it doesn't exist
+        KERNEL_SRC_DIR="buildroot/output/build/linux-custom"
+        KERNEL_DTS_DIR="${KERNEL_SRC_DIR}/arch/arm64/boot/dts/rockchip"
+        mkdir -p "${KERNEL_DTS_DIR}"
+        
+        echo "Copying custom device tree files..."
+        # Copy our custom device tree files
+        cp ../am40-user.dts "${KERNEL_DTS_DIR}/"
+        cp ../am40-dp.dtsi "${KERNEL_DTS_DIR}/"
+        cp ../rk3399-am40.dtsi "${KERNEL_DTS_DIR}/"
+        
+        # Add our DTS to the Makefile
+        if ! grep -q "am40-user.dtb" "${KERNEL_SRC_DIR}/arch/arm64/boot/dts/rockchip/Makefile"; then
+          echo "Updating kernel DTS Makefile..."
+          echo 'dtb-$(CONFIG_ARCH_ROCKCHIP) += am40-user.dtb' >> "${KERNEL_SRC_DIR}/arch/arm64/boot/dts/rockchip/Makefile"
+        fi
+        
+        # Configure Batocera to use our custom DTB
+        echo "Configuring Batocera to use custom DTB..."
+        sed -i 's/^BR2_LINUX_KERNEL_INTREE_DTS_NAME=.*$/BR2_LINUX_KERNEL_INTREE_DTS_NAME="rockchip\/am40-user"/' .config
+
+    - name: Build Batocera
+      run: |
+        cd batocera.linux
+        echo "Starting Batocera build process..."
+        make
+      
+    - name: Create output directory
+      run: mkdir -p output
+
+    - name: Copy build artifacts
+      run: |
+        KERNEL_VERSION="${{ github.event.inputs.kernel_version || '6.14.5' }}"
+        echo "Copying build artifacts..."
+        cp batocera.linux/output/images/batocera-rockchip-rk3399-*.img output/batocera-rockchip-rk3399-am40-${KERNEL_VERSION}.img
+        cp batocera.linux/output/images/boot.tar.xz output/boot-rk3399-am40-${KERNEL_VERSION}.tar.xz
+        
+        # Create a smaller package with just the DTB files
+        echo "Creating DTB package..."
+        mkdir -p dtb-package/boot/dtbs/${KERNEL_VERSION}/rockchip
+        cp batocera.linux/output/build/linux-custom/arch/arm64/boot/dts/rockchip/am40-user.dtb dtb-package/boot/dtbs/${KERNEL_VERSION}/rockchip/
+        cd dtb-package
+        tar -czf ../output/am40-dtb-${KERNEL_VERSION}.tar.gz .
+        cd ..
+        
+        # Create MD5 checksums
+        echo "Creating checksums..."
+        cd output
+        md5sum *.img *.tar.xz *.tar.gz > MD5SUMS
+        cd ..
+
+    - name: Upload image artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: batocera-rk3399-am40-image
+        path: output/batocera-rockchip-rk3399-am40-*.img
+        retention-days: 7
+
+    - name: Upload boot artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: batocera-rk3399-am40-boot
+        path: output/boot-rk3399-am40-*.tar.xz
+        retention-days: 7
+
+    - name: Upload DTB package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: batocera-rk3399-am40-dtb
+        path: output/am40-dtb-*.tar.gz
+        retention-days: 7
+
+    - name: Upload MD5SUMS
+      uses: actions/upload-artifact@v4
+      with:
+        name: batocera-rk3399-am40-md5sums
+        path: output/MD5SUMS
+        retention-days: 7
+
+    - name: Create Release
+      if: github.event_name == 'workflow_dispatch'
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Batocera RK3399 AM40 ${{ github.event.inputs.kernel_version || '6.14.5' }}
+        tag_name: v${{ github.event.inputs.kernel_version || '6.14.5' }}-am40
+        draft: false
+        prerelease: false
+        files: |
+          output/batocera-rockchip-rk3399-am40-*.img
+          output/boot-rk3399-am40-*.tar.xz
+          output/am40-dtb-*.tar.gz
+          output/MD5SUMS
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
