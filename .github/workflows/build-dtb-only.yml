@@ -28,6 +28,102 @@ jobs:
     - name: Install required packages
       run: sudo apt-get update && sudo apt-get install -y device-tree-compiler wget
 
+    - name: Create build environment
+      run: |
+        mkdir -p build
+        mkdir -p include/linux
+        
+        # Generate minimal linux-event-codes.h
+        cat > include/linux/input-event-codes.h << 'EOF'
+        /* 
+         * Minimal Linux input event codes for device tree compilation
+         * Extracted from Linux kernel
+         */
+        #ifndef _LINUX_INPUT_EVENT_CODES_H
+        #define _LINUX_INPUT_EVENT_CODES_H
+
+        /* Key definitions */
+        #define KEY_RESERVED		0
+        #define KEY_ESC			1
+        #define KEY_1			2
+        #define KEY_2			3
+        #define KEY_3			4
+        #define KEY_4			5
+        #define KEY_5			6
+        #define KEY_6			7
+        #define KEY_7			8
+        #define KEY_8			9
+        #define KEY_9			10
+        #define KEY_0			11
+        #define KEY_MINUS		12
+        #define KEY_EQUAL		13
+        #define KEY_BACKSPACE		14
+        #define KEY_TAB			15
+        #define KEY_Q			16
+        #define KEY_W			17
+        #define KEY_E			18
+        #define KEY_R			19
+        #define KEY_T			20
+        #define KEY_Y			21
+        #define KEY_U			22
+        #define KEY_I			23
+        #define KEY_O			24
+        #define KEY_P			25
+        #define KEY_LEFTBRACE		26
+        #define KEY_RIGHTBRACE		27
+        #define KEY_ENTER		28
+        #define KEY_LEFTCTRL		29
+        #define KEY_A			30
+        #define KEY_S			31
+        #define KEY_D			32
+        #define KEY_F			33
+        #define KEY_G			34
+        #define KEY_H			35
+        #define KEY_J			36
+        #define KEY_K			37
+        #define KEY_L			38
+        #define KEY_SEMICOLON		39
+        #define KEY_APOSTROPHE		40
+        #define KEY_GRAVE		41
+        #define KEY_LEFTSHIFT		42
+        #define KEY_BACKSLASH		43
+        #define KEY_Z			44
+        #define KEY_X			45
+        #define KEY_C			46
+        #define KEY_V			47
+        #define KEY_B			48
+        #define KEY_N			49
+        #define KEY_M			50
+        #define KEY_COMMA		51
+        #define KEY_DOT			52
+        #define KEY_SLASH		53
+        #define KEY_RIGHTSHIFT		54
+        #define KEY_KPASTERISK		55
+        #define KEY_LEFTALT		56
+        #define KEY_SPACE		57
+        #define KEY_CAPSLOCK		58
+        #define KEY_F1			59
+        #define KEY_F2			60
+        #define KEY_F3			61
+        #define KEY_F4			62
+        #define KEY_F5			63
+        #define KEY_F6			64
+        #define KEY_F7			65
+        #define KEY_F8			66
+        #define KEY_F9			67
+        #define KEY_F10			68
+        #define KEY_POWER		116
+
+        /* GPIO definitions */
+        #define GPIO_ACTIVE_HIGH 0
+        #define GPIO_ACTIVE_LOW 1
+
+        #endif /* _LINUX_INPUT_EVENT_CODES_H */
+        EOF
+        
+        # Create symlink to make it accessible as linux-event-codes.h
+        ln -sf include/linux/input-event-codes.h include/linux-event-codes.h
+
     - name: Download kernel headers
       run: |
         KERNEL_VERSION="${{ github.event.inputs.kernel_version || '6.14.5' }}"
@@ -39,25 +135,23 @@ jobs:
         echo "Extracting kernel source..."
         tar -xf linux-${KERNEL_VERSION}.tar.xz -C kernel-temp --strip-components=1
         
-        # Check what's available
-        echo "Checking kernel directory structure..."
-        ls -la kernel-temp/include/
+        # Copy essential include directories
+        echo "Copying kernel headers..."
+        cp -r kernel-temp/include/dt-bindings include/
         
-        # Create proper include directory
-        mkdir -p include
+        # Copy additional Linux headers that might be needed
+        mkdir -p include/linux
+        if [ -f "kernel-temp/include/linux/input-event-codes.h" ]; then
+          cp kernel-temp/include/linux/input-event-codes.h include/linux/
+          # Create symlink for the old name
+          ln -sf linux/input-event-codes.h include/linux-event-codes.h
+        fi
         
-        # Copy dt-bindings directory (might be in different paths depending on kernel version)
-        if [ -d "kernel-temp/include/dt-bindings" ]; then
-          echo "Found dt-bindings in include directory, copying..."
-          cp -r kernel-temp/include/dt-bindings include/
-        elif [ -d "kernel-temp/include/linux/dt-bindings" ]; then
-          echo "Found dt-bindings in include/linux directory, copying..."
-          cp -r kernel-temp/include/linux/dt-bindings include/
-        else
-          echo "Looking for dt-bindings in other locations..."
-          find kernel-temp -type d -name "dt-bindings" -print
-          # Try to find and copy the dt-bindings directory wherever it is
-          find kernel-temp -type d -name "dt-bindings" -exec cp -r {} include/ \;
+        if [ -f "kernel-temp/include/uapi/linux/input-event-codes.h" ]; then
+          mkdir -p include/uapi/linux
+          cp kernel-temp/include/uapi/linux/input-event-codes.h include/uapi/linux/
+          # Create symlink for the old name
+          ln -sf uapi/linux/input-event-codes.h include/linux-event-codes.h
         fi
         
         # Clean up
@@ -65,24 +159,96 @@ jobs:
         
         # Verify the include directory
         echo "Verifying include directory contents:"
-        ls -la include/
+        find include -type f | sort
 
-    - name: Create output directory
-      run: mkdir -p build
+    - name: Prepare DTS includes
+      run: |
+        # Create minimal versions of common header files if they don't exist
+        if [ ! -f "include/linux-event-codes.h" ] && [ ! -f "include/linux/input-event-codes.h" ]; then
+          echo "Creating minimal input-event-codes.h..."
+          mkdir -p include/linux
+          cat > include/linux/input-event-codes.h << 'EOF'
+        #ifndef _LINUX_INPUT_EVENT_CODES_H
+        #define _LINUX_INPUT_EVENT_CODES_H
+
+        /* Just the keys we need for Batocera */
+        #define KEY_POWER        116
+        #define KEY_MUTE         113
+        #define KEY_VOLUMEUP     115
+        #define KEY_VOLUMEDOWN   114
+        #define KEY_ESC          1
+        #define KEY_1            2
+        #define KEY_2            3
+        #define KEY_3            4
+        #define KEY_4            5
+        #define KEY_5            6
+
+        #endif
+        EOF
+          ln -sf linux/input-event-codes.h include/linux-event-codes.h
+        fi
+        
+        # Create pwm.h if it doesn't exist
+        if [ ! -f "include/dt-bindings/pwm/pwm.h" ]; then
+          echo "Creating minimal pwm.h..."
+          mkdir -p include/dt-bindings/pwm
+          cat > include/dt-bindings/pwm/pwm.h << 'EOF'
+        #ifndef _DT_BINDINGS_PWM_PWM_H
+        #define _DT_BINDINGS_PWM_PWM_H
+
+        #define PWM_POLARITY_NORMAL  0
+        #define PWM_POLARITY_INVERSED 1
+
+        #endif
+        EOF
+        fi
+        
+        # Create gpio.h if it doesn't exist
+        if [ ! -f "include/dt-bindings/gpio/gpio.h" ]; then
+          echo "Creating minimal gpio.h..."
+          mkdir -p include/dt-bindings/gpio
+          cat > include/dt-bindings/gpio/gpio.h << 'EOF'
+        #ifndef _DT_BINDINGS_GPIO_GPIO_H
+        #define _DT_BINDINGS_GPIO_GPIO_H
+
+        /* GPIO Active states */
+        #define GPIO_ACTIVE_HIGH 0
+        #define GPIO_ACTIVE_LOW  1
+
+        #endif
+        EOF
+        fi
+        
+        # Create input.h if it doesn't exist
+        if [ ! -f "include/dt-bindings/input/input.h" ]; then
+          echo "Creating minimal input.h..."
+          mkdir -p include/dt-bindings/input
+          cat > include/dt-bindings/input/input.h << 'EOF'
+        #ifndef _DT_BINDINGS_INPUT_INPUT_H
+        #define _DT_BINDINGS_INPUT_INPUT_H
+
+        #include "linux-event-codes.h"
+
+        #endif
+        EOF
+        fi
+        
+        # Show final include structure
+        echo "Final include directory structure:"
+        find include -type f | sort
 
     - name: Clean DTS files
       run: |
-        # Check if we have the dt-bindings directory
-        if [ -d "include/dt-bindings" ]; then
-          echo "Using include/dt-bindings for preprocessing..."
-          cpp -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user.dts build/am40-user.preprocessed.dts
-        else
-          echo "dt-bindings directory not found, trying without include path..."
-          cpp -nostdinc -I. -undef -x assembler-with-cpp am40-user.dts build/am40-user.preprocessed.dts
-        fi
+        echo "Preprocessing DTS files..."
+        cpp -nostdinc -I. -I./include -undef -x assembler-with-cpp am40-user.dts build/am40-user.preprocessed.dts
+        
+        # Show the preprocessed file for debugging
+        echo "Showing first 20 lines of preprocessed file:"
+        head -n 20 build/am40-user.preprocessed.dts
 
     - name: Compile DTB file
       run: |
+        echo "Compiling DTB from preprocessed DTS..."
         dtc -I dts -O dtb -o build/am40-user.dtb build/am40-user.preprocessed.dts
         ls -la build/
 
