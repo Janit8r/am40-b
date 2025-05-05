@@ -81,11 +81,11 @@ jobs:
       - name: Verify Go version
         run: go version
 
-      - name: Install TinyGo 0.36.0
+      - name: Install TinyGo 0.37.0
         run: |
-          echo "Installing TinyGo 0.36.0"
-          wget https://github.com/tinygo-org/tinygo/releases/download/v0.36.0/tinygo_0.36.0_amd64.deb
-          sudo dpkg -i tinygo_0.36.0_amd64.deb
+          echo "Installing TinyGo 0.37.0"
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.37.0/tinygo_0.37.0_amd64.deb
+          sudo dpkg -i tinygo_0.37.0_amd64.deb
           tinygo version
 
       - name: Set up Node.js
