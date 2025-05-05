@@ -103,21 +103,27 @@ jobs:
           go mod tidy
           go mod vendor
 
-      - name: Delete incompatible vendor files before build
+      - name: Add build constraints to incompatible vendor files before build
         working-directory: alist-workspace/alist-main
         run: |
-          echo "Deleting problematic vendor files after go mod vendor..."
-          FILES_TO_DELETE=(
+          echo "Adding build constraints to problematic vendor files after go mod vendor..."
+          FILES_TO_PATCH=(
+            # Previous ones just in case
             "vendor/github.com/gin-gonic/gin/recovery.go"
             "vendor/github.com/go-resty/resty/v2/trace.go"
             "vendor/golang.org/x/net/publicsuffix/list.go"
+            # Newly identified ones
+            "vendor/github.com/aws/aws-sdk-go/aws/client/logger.go"
+            "vendor/github.com/go-resty/resty/v2/resty.go"
+            "vendor/golang.org/x/net/internal/httpcommon/request.go"
           )
-          for f in "${FILES_TO_DELETE[@]}"; do
+          for f in "${FILES_TO_PATCH[@]}"; do
             if [ -f "$f" ]; then
-              rm -f "$f"
-              echo "Deleted $f"
+              # Use sed 'i' command to insert the line at the beginning (line 1)
+              sed -i '1i //go:build !js || !wasm' "$f"
+              echo "Added constraint to $f"
             else
-              echo "Warning: File $f not found, skipping deletion."
+              echo "Warning: File $f not found, skipping patch."
             fi
           done
 
