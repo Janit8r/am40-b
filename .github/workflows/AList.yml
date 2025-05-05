@@ -69,6 +69,13 @@ jobs:
       - name: Verify Go version
         run: go version
 
+      - name: Install TinyGo 0.36.0
+        run: |
+          echo "Installing TinyGo 0.36.0"
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.36.0/tinygo_0.36.0_amd64.deb
+          sudo dpkg -i tinygo_0.36.0_amd64.deb
+          tinygo version
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -87,10 +94,14 @@ jobs:
       - name: Build WASM module
         working-directory: alist-workspace/alist-main
         run: |
-          echo "Building WebAssembly module using standard Go compiler"
-          GOOS=js GOARCH=wasm go build \
+          echo "Building WebAssembly module using TinyGo"
+          tinygo build \
             -o ../../dist/alist.wasm \
-            -ldflags="-s -w" \
+            -target wasm \
+            -no-debug \
+            -opt=2 \
+            -gc=leaking \
+            -scheduler=none \
             ./wasm/main.go
 
           echo "Copying worker.js to dist"
