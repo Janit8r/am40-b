@@ -53,22 +53,31 @@ jobs:
           ls -la alist-workspace
           ls -la alist-workspace/alist-main || echo "alist-main directory not found"
 
-      - name: Add build constraints to exclude incompatible packages for WASM
+      - name: Add build constraint to debug.go and delete incompatible vendor files
         run: |
-          echo "Adding //go:build !js || !wasm to problematic files..."
-          FILES_TO_MODIFY=(
-            "alist-workspace/alist-main/server/debug.go"
+          # Add constraint to debug.go
+          DEBUG_FILE="alist-workspace/alist-main/server/debug.go"
+          if [ -f "$DEBUG_FILE" ]; then
+            echo "Adding //go:build !js || !wasm to $DEBUG_FILE"
+            sed -i '1i //go:build !js || !wasm' "$DEBUG_FILE"
+            head -3 "$DEBUG_FILE"
+          else
+            echo "Warning: File $DEBUG_FILE not found, skipping."
+          fi
+
+          # Delete problematic vendor files
+          echo "Deleting problematic vendor files..."
+          FILES_TO_DELETE=(
             "alist-workspace/alist-main/vendor/github.com/gin-gonic/gin/recovery.go"
             "alist-workspace/alist-main/vendor/github.com/go-resty/resty/v2/trace.go"
+            "alist-workspace/alist-main/vendor/golang.org/x/net/publicsuffix/list.go"
           )
-          for f in "${FILES_TO_MODIFY[@]}"; do
+          for f in "${FILES_TO_DELETE[@]}"; do
             if [ -f "$f" ]; then
-              # Use sed 'i' command to insert the line at the beginning (line 1)
-              sed -i '1i //go:build !js || !wasm' "$f"
-              echo "Added constraint to $f"
-              head -3 "$f"
+              rm -f "$f"
+              echo "Deleted $f"
             else
-              echo "Warning: File $f not found, skipping."
+              echo "Warning: File $f not found, skipping deletion."
             fi
           done
 
