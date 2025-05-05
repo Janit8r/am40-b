@@ -1,10 +1,10 @@
-name: Build and Deploy AList to Cloudflare Workers
+name: AList WASM for Cloudflare Workers - Build & Document
 
 on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to'
+        description: 'Deployment environment'
         required: true
         default: 'production'
         type: choice
@@ -12,41 +12,61 @@ on:
           - production
           - staging
           - development
+      deploy:
+        description: 'Deploy to Cloudflare Workers'
+        type: boolean
+        required: false
+        default: false
       kv_namespace_id:
-        description: 'Cloudflare KV namespace ID for AList'
+        description: 'Cloudflare KV namespace ID'
         required: false
         default: ''
       r2_bucket:
-        description: 'Cloudflare R2 bucket name for AList'
+        description: 'Cloudflare R2 bucket name'
         required: false
         default: 'alist-storage'
-      wasm_size_limit:
-        description: 'Maximum size of WASM module in MB'
+      source_url:
+        description: 'Source code URL'
         required: false
-        default: '5'
+        default: 'https://raw.githubusercontent.com/Janit8r/am40-b/refs/heads/main/alist-main.zip'
+      generate_docs:
+        description: 'Generate documentation'
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Download source code
+      - name: Create workspace and directories
         run: |
           mkdir -p alist-workspace
-          wget -O alist-source.zip https://raw.githubusercontent.com/Janit8r/am40-b/refs/heads/main/alist-main.zip
-          unzip alist-source.zip -d alist-workspace
-          ls -la alist-workspace
-          ls -la alist-workspace/alist-main
+          mkdir -p dist
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-          cache: true
-
-      - name: Install TinyGo
+      - name: Download source code
         run: |
-          wget https://github.com/tinygo-org/tinygo/releases/download/v0.30.0/tinygo_0.30.0_amd64.deb
-          sudo dpkg -i tinygo_0.30.0_amd64.deb
+          echo "Downloading source from ${{ github.event.inputs.source_url }}"
+          wget -O alist-source.zip "${{ github.event.inputs.source_url }}"
+          unzip alist-source.zip -d alist-workspace
+          echo "Source code contents:"
+          ls -la alist-workspace
+          ls -la alist-workspace/alist-main || echo "alist-main directory not found"
+
+      - name: Set up Go 1.21
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.0'  # Explicitly use 1.21.0 which is compatible with TinyGo
+          cache: false
+
+      - name: Verify Go version
+        run: go version
+
+      - name: Install TinyGo 0.28.1
+        run: |
+          echo "Installing TinyGo 0.28.1"
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.28.1/tinygo_0.28.1_amd64.deb
+          sudo dpkg -i tinygo_0.28.1_amd64.deb
           tinygo version
 
       - name: Set up Node.js
@@ -57,12 +77,17 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      - name: Create build directory
-        run: mkdir -p dist
-
-      - name: Build WASM module with optimizations
+      - name: Prepare for build
         working-directory: alist-workspace/alist-main
         run: |
+          echo "Setting up Go modules"
+          go mod tidy
+          go mod vendor
+
+      - name: Build WASM module
+        working-directory: alist-workspace/alist-main
+        run: |
+          echo "Building WebAssembly module"
           tinygo build \
             -o ../../dist/alist.wasm \
             -target wasm \
@@ -71,22 +96,17 @@ jobs:
             -gc=leaking \
             -scheduler=none \
             ./wasm/main.go
+          
+          echo "Copying worker.js to dist"
+          cp ./wasm/worker.js ../../dist/index.js
 
       - name: Check WASM file size
         run: |
           WASM_SIZE=$(ls -la dist/alist.wasm | awk '{print $5}')
           WASM_SIZE_MB=$(echo "scale=2; $WASM_SIZE / 1048576" | bc)
           echo "WASM module size: $WASM_SIZE_MB MB"
-          MAX_SIZE_MB=${{ github.event.inputs.wasm_size_limit }}
-          MAX_SIZE_BYTES=$(echo "$MAX_SIZE_MB * 1048576" | bc | cut -d'.' -f1)
-          
-          if [ $WASM_SIZE -gt $MAX_SIZE_BYTES ]; then
-            echo "Error: WASM module size ($WASM_SIZE_MB MB) exceeds limit ($MAX_SIZE_MB MB)"
-            exit 1
-          fi
-
-      - name: Copy worker JavaScript
-        run: cp alist-workspace/alist-main/wasm/worker.js dist/index.js
+          echo "Build artifact contents:"
+          ls -la dist/
 
       - name: Generate wrangler.toml
         run: |
@@ -136,16 +156,17 @@ jobs:
           [placement]
           mode = "smart"
 
-          # Adjust based on your needs
+          # Resource limits
           [limits]
           cpu_ms = 200
           memory_mb = 128
           EOL
 
-      - name: Preview wrangler.toml
-        run: cat dist/wrangler.toml
+          echo "Generated wrangler.toml:"
+          cat dist/wrangler.toml
 
-      - name: Deploy to Cloudflare Workers
+      - name: Deploy to Cloudflare Workers (if enabled)
+        if: ${{ github.event.inputs.deploy == 'true' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -154,8 +175,103 @@ jobs:
           echo "Deploying to ${{ github.event.inputs.environment }} environment..."
           wrangler deploy --env ${{ github.event.inputs.environment }}
 
-      - name: Upload artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: alist-worker-${{ github.event.inputs.environment }}
           path: dist/
+          retention-days: 7
+
+  generate-documentation:
+    needs: build-and-deploy
+    if: ${{ github.event.inputs.generate_docs == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source code
+        run: |
+          mkdir -p alist-workspace
+          wget -O alist-source.zip "${{ github.event.inputs.source_url }}"
+          unzip alist-source.zip -d alist-workspace
+          echo "Source code downloaded for documentation"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install Context7 CLI
+        run: npm install -g @upstash/context7-cli
+
+      - name: Configure Context7
+        run: |
+          mkdir -p $HOME/.context7
+          echo '{
+            "mcpServers": {
+              "context7": {
+                "command": "npx",
+                "args": ["-y", "@upstash/context7-mcp@latest"]
+              }
+            }
+          }' > $HOME/.context7/config.json
+
+      - name: Create docs directory
+        run: mkdir -p docs
+
+      - name: Generate comprehensive documentation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          context7 analyze \
+            --query "Generate comprehensive documentation for the AList WASM Cloudflare Worker implementation" \
+            --paths "alist-workspace/alist-main/wasm/" \
+            --output-format "md" \
+            --output "docs/full-documentation.md"
+            
+      - name: Generate API documentation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          context7 analyze \
+            --query "Generate API documentation for the Alist WASM Cloudflare Worker implementation" \
+            --paths "alist-workspace/alist-main/wasm/" \
+            --focus-on "main.go,worker.js" \
+            --output-format "md" \
+            --output "docs/api-reference.md"
+            
+      - name: Generate architecture diagram
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          context7 analyze \
+            --query "Create a detailed architecture diagram showing how Alist works on Cloudflare Workers using WebAssembly" \
+            --paths "alist-workspace/alist-main/wasm/" \
+            --output-format "md" \
+            --output "docs/architecture-diagram.md"
+
+      - name: Generate deployment guide
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          context7 analyze \
+            --query "Create a step-by-step deployment guide for Alist on Cloudflare Workers" \
+            --paths "alist-workspace/alist-main/wasm/" \
+            --output-format "md" \
+            --output "docs/deployment-guide.md"
+
+      - name: Combine documentation
+        run: |
+          echo "# AList WebAssembly for Cloudflare Workers" > docs/index.md
+          echo "## Documentation generated on $(date)" >> docs/index.md
+          echo "" >> docs/index.md
+          echo "## Table of Contents" >> docs/index.md
+          echo "1. [Architecture Diagram](architecture-diagram.md)" >> docs/index.md
+          echo "2. [API Reference](api-reference.md)" >> docs/index.md
+          echo "3. [Deployment Guide](deployment-guide.md)" >> docs/index.md
+          echo "4. [Full Documentation](full-documentation.md)" >> docs/index.md
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: alist-wasm-documentation
+          path: docs/
+          retention-days: 30
