@@ -38,60 +38,36 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Set up workspace
+      - name: Create workspace and directories
         run: |
-          mkdir -p alist-workspace dist
+          mkdir -p alist-workspace
+          mkdir -p dist
 
-      - name: Download or clone source
+      - name: Download source code
         run: |
-          echo "Source URL: ${{ github.event.inputs.source_url }}"
-          if [[ "${{ github.event.inputs.source_url }}" =~ \.zip$ ]]; then
-            wget -O alist-source.zip "${{ github.event.inputs.source_url }}"
-            unzip -q alist-source.zip -d alist-workspace
-          else
-            cd alist-workspace
-            git clone "${{ github.event.inputs.source_url }}" alist-main
-            cd ..
-          fi
-          echo "Directory contents:"
+          echo "Downloading source from ${{ github.event.inputs.source_url }}"
+          wget -O alist-source.zip "${{ github.event.inputs.source_url }}"
+          unzip alist-source.zip -d alist-workspace
+          echo "Source code contents:"
           ls -la alist-workspace
           ls -la alist-workspace/alist-main || echo "alist-main directory not found"
 
-      - name: Fix go.mod file (if exists)
+      - name: Fix go.mod file
         run: |
-          if [ -f alist-workspace/alist-main/go.mod ]; then
-            sed -i 's/go 1\.[0-9]\+/go 1.20/' alist-workspace/alist-main/go.mod
-            echo "Fixed go.mod:"
-            head -5 alist-workspace/alist-main/go.mod
-          else
-            echo "go.mod not found!"
-          fi
+          echo "Fixing go.mod file to use proper Go version format"
+          sed -i 's/go 1.23.4/go 1.23/' alist-workspace/alist-main/go.mod
+          echo "Modified go.mod:"
+          cat alist-workspace/alist-main/go.mod | head -5
 
-      - name: Set up Go 1.20
+      - name: Set up Go 1.23
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20'
-
-      - name: Set up Go mod cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version: '1.23'
+          cache: false
 
       - name: Verify Go version
         run: go version
-
-      - name: Install TinyGo 0.28.1
-        run: |
-          wget https://github.com/tinygo-org/tinygo/releases/download/v0.28.1/tinygo_0.28.1_amd64.deb
-          sudo dpkg -i tinygo_0.28.1_amd64.deb
-          tinygo version
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -101,38 +77,32 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      - name: Prepare Go modules
+      - name: Prepare for build
         working-directory: alist-workspace/alist-main
         run: |
-          go mod tidy || echo "go mod tidy failed"
-          go mod vendor || echo "go mod vendor failed"
+          echo "Setting up Go modules"
+          go mod tidy
+          go mod vendor
 
       - name: Build WASM module
         working-directory: alist-workspace/alist-main
         run: |
-          if [ -f ./wasm/main.go ]; then
-            echo "Building WebAssembly module..."
-            tinygo build \
-              -o ../../dist/alist.wasm \
-              -target wasm \
-              -no-debug \
-              -opt=2 \
-              -gc=leaking \
-              -scheduler=none \
-              ./wasm/main.go
-            cp ./wasm/worker.js ../../dist/index.js
-          else
-            echo "main.go not found! Skipping build."
-            exit 1
-          fi
+          echo "Building WebAssembly module using standard Go compiler"
+          GOOS=js GOARCH=wasm go build \
+            -o ../../dist/alist.wasm \
+            -ldflags="-s -w" \
+            ./wasm/main.go
 
-      - name: Check WASM file
+          echo "Copying worker.js to dist"
+          cp ./wasm/worker.js ../../dist/index.js
+
+      - name: Check WASM file size
         run: |
-          ls -lh dist/
-          if [ ! -f dist/alist.wasm ]; then
-            echo "alist.wasm not found!"
-            exit 1
-          fi
+          WASM_SIZE=$(ls -la dist/alist.wasm | awk '{print $5}')
+          WASM_SIZE_MB=$(echo "scale=2; $WASM_SIZE / 1048576" | bc)
+          echo "WASM module size: $WASM_SIZE_MB MB"
+          echo "Build artifact contents:"
+          ls -la dist/
 
       - name: Generate wrangler.toml
         run: |
@@ -148,13 +118,15 @@ jobs:
           [wasm_modules]
           alist = "alist.wasm"
 
+          # Environment-specific settings
           [env.${{ github.event.inputs.environment }}]
           workers_dev = true
           EOL
 
+          # Add KV namespace if provided
           if [ -n "${{ github.event.inputs.kv_namespace_id }}" ]; then
             cat >> dist/wrangler.toml << EOL
-
+          
           [env.${{ github.event.inputs.environment }}.kv_namespaces]
           [[env.${{ github.event.inputs.environment }}.kv_namespaces]]
           binding = "ALIST_KV"
@@ -162,9 +134,10 @@ jobs:
           EOL
           fi
 
+          # Add R2 bucket if provided
           if [ -n "${{ github.event.inputs.r2_bucket }}" ]; then
             cat >> dist/wrangler.toml << EOL
-
+          
           [env.${{ github.event.inputs.environment }}.r2_buckets]
           [[env.${{ github.event.inputs.environment }}.r2_buckets]]
           binding = "ALIST_R2"
@@ -172,16 +145,20 @@ jobs:
           EOL
           fi
 
+          # Add resource settings
           cat >> dist/wrangler.toml << EOL
-
+          
+          # CPU-intensive workload settings
           [placement]
           mode = "smart"
 
+          # Resource limits
           [limits]
           cpu_ms = 200
           memory_mb = 128
           EOL
 
+          echo "Generated wrangler.toml:"
           cat dist/wrangler.toml
 
       - name: Deploy to Cloudflare Workers (if enabled)
@@ -191,6 +168,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           cd dist
+          echo "Deploying to ${{ github.event.inputs.environment }} environment..."
           wrangler deploy --env ${{ github.event.inputs.environment }}
 
       - name: Upload build artifacts
@@ -209,13 +187,14 @@ jobs:
         run: |
           mkdir -p alist-workspace
           wget -O alist-source.zip "${{ github.event.inputs.source_url }}"
-          unzip -q alist-source.zip -d alist-workspace || echo "Skip unzip if git"
+          unzip alist-source.zip -d alist-workspace
+          echo "Source code downloaded for documentation"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
+          
       - name: Install Context7 CLI
         run: npm install -g @upstash/context7-cli
 
@@ -234,7 +213,7 @@ jobs:
       - name: Create docs directory
         run: mkdir -p docs
 
-      - name: Generate documentation
+      - name: Generate comprehensive documentation
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -243,27 +222,39 @@ jobs:
             --paths "alist-workspace/alist-main/wasm/" \
             --output-format "md" \
             --output "docs/full-documentation.md"
-
+            
+      - name: Generate API documentation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
           context7 analyze \
             --query "Generate API documentation for the Alist WASM Cloudflare Worker implementation" \
             --paths "alist-workspace/alist-main/wasm/" \
             --focus-on "main.go,worker.js" \
             --output-format "md" \
             --output "docs/api-reference.md"
-
+            
+      - name: Generate architecture diagram
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
           context7 analyze \
             --query "Create a detailed architecture diagram showing how Alist works on Cloudflare Workers using WebAssembly" \
             --paths "alist-workspace/alist-main/wasm/" \
             --output-format "md" \
             --output "docs/architecture-diagram.md"
 
+      - name: Generate deployment guide
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
           context7 analyze \
             --query "Create a step-by-step deployment guide for Alist on Cloudflare Workers" \
             --paths "alist-workspace/alist-main/wasm/" \
             --output-format "md" \
             --output "docs/deployment-guide.md"
 
-      - name: Combine docs index
+      - name: Combine documentation
         run: |
           echo "# AList WebAssembly for Cloudflare Workers" > docs/index.md
           echo "## Documentation generated on $(date)" >> docs/index.md
@@ -279,4 +270,4 @@ jobs:
         with:
           name: alist-wasm-documentation
           path: docs/
-          retention-days: 30
+          retention-days: 30 
