@@ -53,7 +53,7 @@ jobs:
           ls -la alist-workspace
           ls -la alist-workspace/alist-main || echo "alist-main directory not found"
 
-      - name: Add build constraint to debug.go and delete incompatible vendor files
+      - name: Add build constraint to debug.go
         run: |
           # Add constraint to debug.go
           DEBUG_FILE="alist-workspace/alist-main/server/debug.go"
@@ -64,22 +64,6 @@ jobs:
           else
             echo "Warning: File $DEBUG_FILE not found, skipping."
           fi
-
-          # Delete problematic vendor files
-          echo "Deleting problematic vendor files..."
-          FILES_TO_DELETE=(
-            "alist-workspace/alist-main/vendor/github.com/gin-gonic/gin/recovery.go"
-            "alist-workspace/alist-main/vendor/github.com/go-resty/resty/v2/trace.go"
-            "alist-workspace/alist-main/vendor/golang.org/x/net/publicsuffix/list.go"
-          )
-          for f in "${FILES_TO_DELETE[@]}"; do
-            if [ -f "$f" ]; then
-              rm -f "$f"
-              echo "Deleted $f"
-            else
-              echo "Warning: File $f not found, skipping deletion."
-            fi
-          done
 
       - name: Fix go.mod file
         run: |
@@ -118,6 +102,24 @@ jobs:
           echo "Setting up Go modules"
           go mod tidy
           go mod vendor
+
+      - name: Delete incompatible vendor files before build
+        working-directory: alist-workspace/alist-main
+        run: |
+          echo "Deleting problematic vendor files after go mod vendor..."
+          FILES_TO_DELETE=(
+            "vendor/github.com/gin-gonic/gin/recovery.go"
+            "vendor/github.com/go-resty/resty/v2/trace.go"
+            "vendor/golang.org/x/net/publicsuffix/list.go"
+          )
+          for f in "${FILES_TO_DELETE[@]}"; do
+            if [ -f "$f" ]; then
+              rm -f "$f"
+              echo "Deleted $f"
+            else
+              echo "Warning: File $f not found, skipping deletion."
+            fi
+          done
 
       - name: Build WASM module
         working-directory: alist-workspace/alist-main
