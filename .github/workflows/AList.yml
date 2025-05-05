@@ -98,6 +98,7 @@ jobs:
           tinygo build \
             -o ../../dist/alist.wasm \
             -target wasm \
+            -tags tinygo.wasm \
             -no-debug \
             -opt=2 \
             -gc=leaking \
