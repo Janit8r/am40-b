@@ -53,6 +53,13 @@ jobs:
           ls -la alist-workspace
           ls -la alist-workspace/alist-main || echo "alist-main directory not found"
 
+      - name: Fix go.mod file
+        run: |
+          echo "Fixing go.mod file to use proper Go version format"
+          sed -i 's/go 1.23.4/go 1.20/' alist-workspace/alist-main/go.mod
+          echo "Modified go.mod:"
+          cat alist-workspace/alist-main/go.mod | head -5
+
       - name: Set up Go 1.20
         uses: actions/setup-go@v4
         with:
