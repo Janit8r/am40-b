@@ -53,6 +53,24 @@ jobs:
           ls -la alist-workspace
           ls -la alist-workspace/alist-main || echo "alist-main directory not found"
 
+      - name: Add build constraints to exclude incompatible packages for WASM
+        run: |
+          echo "Adding //go:build !js || !wasm to problematic files..."
+          FILES_TO_MODIFY=(
+            "alist-workspace/alist-main/server/debug.go"
+            "alist-workspace/alist-main/vendor/github.com/gin-gonic/gin/recovery.go"
+            "alist-workspace/alist-main/vendor/github.com/go-resty/resty/v2/trace.go"
+          )
+          for f in "${FILES_TO_MODIFY[@]}"; do
+            if [ -f "$f" ]; then
+              sed -i '1s|^|//go:build !js || !wasm\n|' "$f"
+              echo "Added constraint to $f"
+              head -3 "$f"
+            else
+              echo "Warning: File $f not found, skipping."
+            fi
+          done
+
       - name: Fix go.mod file
         run: |
           echo "Fixing go.mod file to use proper Go version format"
@@ -98,7 +116,6 @@ jobs:
           tinygo build \
             -o ../../dist/alist.wasm \
             -target wasm \
-            -tags tinygo.wasm \
             -no-debug \
             -opt=2 \
             -gc=leaking \
@@ -138,7 +155,7 @@ jobs:
           # Add KV namespace if provided
           if [ -n "${{ github.event.inputs.kv_namespace_id }}" ]; then
             cat >> dist/wrangler.toml << EOL
-          
+
           [env.${{ github.event.inputs.environment }}.kv_namespaces]
           [[env.${{ github.event.inputs.environment }}.kv_namespaces]]
           binding = "ALIST_KV"
@@ -149,7 +166,7 @@ jobs:
           # Add R2 bucket if provided
           if [ -n "${{ github.event.inputs.r2_bucket }}" ]; then
             cat >> dist/wrangler.toml << EOL
-          
+
           [env.${{ github.event.inputs.environment }}.r2_buckets]
           [[env.${{ github.event.inputs.environment }}.r2_buckets]]
           binding = "ALIST_R2"
@@ -159,7 +176,7 @@ jobs:
 
           # Add resource settings
           cat >> dist/wrangler.toml << EOL
-          
+
           # CPU-intensive workload settings
           [placement]
           mode = "smart"
@@ -206,7 +223,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          
+
       - name: Install Context7 CLI
         run: npm install -g @upstash/context7-cli
 
@@ -234,7 +251,7 @@ jobs:
             --paths "alist-workspace/alist-main/wasm/" \
             --output-format "md" \
             --output "docs/full-documentation.md"
-            
+
       - name: Generate API documentation
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -245,7 +262,7 @@ jobs:
             --focus-on "main.go,worker.js" \
             --output-format "md" \
             --output "docs/api-reference.md"
-            
+
       - name: Generate architecture diagram
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -282,4 +299,4 @@ jobs:
         with:
           name: alist-wasm-documentation
           path: docs/
-          retention-days: 30 
+          retention-days: 30
