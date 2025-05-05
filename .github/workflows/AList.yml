@@ -118,8 +118,9 @@ jobs:
             "vendor/github.com/go-resty/resty/v2/util_curl.go"
             "vendor/golang.org/x/net/http2/transport.go"
             "vendor/gorm.io/driver/sqlite/sqlite.go"
-            # New one for os.Chmod/os.Symlink
             "pkg/utils/file.go"
+            # New one for mapstructure/reflect issues
+            "vendor/github.com/mitchellh/mapstructure/mapstructure.go"
           )
           for f in "${FILES_TO_PATCH[@]}"; do
             if [ -f "$f" ]; then
