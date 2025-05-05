@@ -119,8 +119,9 @@ jobs:
             "vendor/golang.org/x/net/http2/transport.go"
             "vendor/gorm.io/driver/sqlite/sqlite.go"
             "pkg/utils/file.go"
-            # New one for mapstructure/reflect issues
             "vendor/github.com/mitchellh/mapstructure/mapstructure.go"
+            # New one for DecodeHookFunc undefined issues
+            "vendor/github.com/mitchellh/mapstructure/decode_hooks.go"
           )
           for f in "${FILES_TO_PATCH[@]}"; do
             if [ -f "$f" ]; then
