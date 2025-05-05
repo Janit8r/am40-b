@@ -1,0 +1,155 @@
+name: Build and Deploy AList to Cloudflare Workers
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+      kv_namespace_id:
+        description: 'Cloudflare KV namespace ID for AList'
+        required: false
+        default: ''
+      r2_bucket:
+        description: 'Cloudflare R2 bucket name for AList'
+        required: false
+        default: 'alist-storage'
+      wasm_size_limit:
+        description: 'Maximum size of WASM module in MB'
+        required: false
+        default: '5'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Install TinyGo
+        run: |
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.30.0/tinygo_0.30.0_amd64.deb
+          sudo dpkg -i tinygo_0.30.0_amd64.deb
+          tinygo version
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Create build directory
+        run: mkdir -p dist
+
+      - name: Build WASM module with optimizations
+        run: |
+          tinygo build \
+            -o dist/alist.wasm \
+            -target wasm \
+            -no-debug \
+            -opt=2 \
+            -gc=leaking \
+            -scheduler=none \
+            ./wasm/main.go
+
+      - name: Check WASM file size
+        run: |
+          WASM_SIZE=$(ls -la dist/alist.wasm | awk '{print $5}')
+          WASM_SIZE_MB=$(echo "scale=2; $WASM_SIZE / 1048576" | bc)
+          echo "WASM module size: $WASM_SIZE_MB MB"
+          MAX_SIZE_MB=${{ github.event.inputs.wasm_size_limit }}
+          MAX_SIZE_BYTES=$(echo "$MAX_SIZE_MB * 1048576" | bc | cut -d'.' -f1)
+          
+          if [ $WASM_SIZE -gt $MAX_SIZE_BYTES ]; then
+            echo "Error: WASM module size ($WASM_SIZE_MB MB) exceeds limit ($MAX_SIZE_MB MB)"
+            exit 1
+          fi
+
+      - name: Copy worker JavaScript
+        run: cp ./wasm/worker.js dist/index.js
+
+      - name: Generate wrangler.toml
+        run: |
+          cat > dist/wrangler.toml << EOL
+          name = "alist-worker-${{ github.event.inputs.environment }}"
+          main = "index.js"
+          compatibility_date = "2023-05-15"
+          usage_model = "bundled"
+
+          [build]
+          command = "echo 'Using pre-built files'"
+
+          [wasm_modules]
+          alist = "alist.wasm"
+
+          # Environment-specific settings
+          [env.${{ github.event.inputs.environment }}]
+          workers_dev = true
+          EOL
+
+          # Add KV namespace if provided
+          if [ -n "${{ github.event.inputs.kv_namespace_id }}" ]; then
+            cat >> dist/wrangler.toml << EOL
+          
+          [env.${{ github.event.inputs.environment }}.kv_namespaces]
+          [[env.${{ github.event.inputs.environment }}.kv_namespaces]]
+          binding = "ALIST_KV"
+          id = "${{ github.event.inputs.kv_namespace_id }}"
+          EOL
+          fi
+
+          # Add R2 bucket if provided
+          if [ -n "${{ github.event.inputs.r2_bucket }}" ]; then
+            cat >> dist/wrangler.toml << EOL
+          
+          [env.${{ github.event.inputs.environment }}.r2_buckets]
+          [[env.${{ github.event.inputs.environment }}.r2_buckets]]
+          binding = "ALIST_R2"
+          bucket_name = "${{ github.event.inputs.r2_bucket }}"
+          EOL
+          fi
+
+          # Add resource settings
+          cat >> dist/wrangler.toml << EOL
+          
+          # CPU-intensive workload settings
+          [placement]
+          mode = "smart"
+
+          # Adjust based on your needs
+          [limits]
+          cpu_ms = 200
+          memory_mb = 128
+          EOL
+
+      - name: Preview wrangler.toml
+        run: cat dist/wrangler.toml
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd dist
+          echo "Deploying to ${{ github.event.inputs.environment }} environment..."
+          wrangler deploy --env ${{ github.event.inputs.environment }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: alist-worker-${{ github.event.inputs.environment }}
+          path: dist/
