@@ -108,7 +108,7 @@ jobs:
         run: |
           echo "Adding build constraints to problematic vendor files after go mod vendor..."
           FILES_TO_PATCH=(
-            # Previous ones
+            # Previous ones (excluding go-sqlite3 directly)
             "vendor/github.com/gin-gonic/gin/recovery.go"
             "vendor/github.com/go-resty/resty/v2/trace.go"
             "vendor/golang.org/x/net/publicsuffix/list.go"
@@ -117,9 +117,8 @@ jobs:
             "vendor/golang.org/x/net/internal/httpcommon/request.go"
             "vendor/github.com/go-resty/resty/v2/util_curl.go"
             "vendor/golang.org/x/net/http2/transport.go"
-            # SQLite CGO issues
-            "vendor/github.com/mattn/go-sqlite3/sqlite3.go"
-            "vendor/github.com/mattn/go-sqlite3/sqlite3_other.go"
+            # Add GORM SQLite driver (instead of go-sqlite3 files)
+            "vendor/gorm.io/driver/sqlite/sqlite.go"
           )
           for f in "${FILES_TO_PATCH[@]}"; do
             if [ -f "$f" ]; then
