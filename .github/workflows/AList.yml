@@ -63,7 +63,8 @@ jobs:
           )
           for f in "${FILES_TO_MODIFY[@]}"; do
             if [ -f "$f" ]; then
-              sed -i '1s|^|//go:build !js || !wasm\n|' "$f"
+              # Use sed 'i' command to insert the line at the beginning (line 1)
+              sed -i '1i //go:build !js || !wasm' "$f"
               echo "Added constraint to $f"
               head -3 "$f"
             else
