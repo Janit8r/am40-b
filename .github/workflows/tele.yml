@@ -1,0 +1,209 @@
+name: Deploy Telegram Web with FRP
+
+on:
+  workflow_dispatch:
+    inputs:
+      FRP_SERVER_ADDR:
+        description: 'FRP 服务器地址'
+        required: true
+      FRP_SERVER_PORT:
+        description: 'FRP 服务器端口'
+        required: true
+      FRP_TOKEN:
+        description: 'FRP Token'
+        required: true
+      FRP_REMOTE_PORT:
+        description: 'FRP 暴露端口'
+        required: true
+      SSH_HOST:
+        description: '服务器IP'
+        required: true
+      SSH_USER:
+        description: '服务器用户名'
+        required: true
+      SSH_PORT:
+        description: 'SSH端口'
+        required: false
+        default: '22'
+      SSH_KEY:
+        description: 'SSH私钥'
+        required: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: telegram-web-frp
+      CONTAINER_NAME: telegram-web-frp
+    steps:
+      - name: 生成 Dockerfile
+        run: |
+          cat > Dockerfile <<'EOF'
+          FROM ubuntu:22.04
+
+          ENV DEBIAN_FRONTEND=noninteractive
+
+          RUN apt-get update && \
+              apt-get install -y \
+                  wget \
+                  ca-certificates \
+                  x11vnc \
+                  xvfb \
+                  fluxbox \
+                  supervisor \
+                  python3 \
+                  python3-pip \
+                  git \
+                  curl \
+                  libglib2.0-0 \
+                  libnss3 \
+                  libxss1 \
+                  libasound2 \
+                  libatk1.0-0 \
+                  libatk-bridge2.0-0 \
+                  libgtk-3-0 \
+                  libx11-xcb1 \
+                  libxcb-icccm4 \
+                  libxcb-image0 \
+                  libxcb-keysyms1 \
+                  libxcb-render-util0 \
+                  libxcb-xinerama0 \
+                  libxcb-xkb1 \
+                  libxcomposite1 \
+                  libxcursor1 \
+                  libxdamage1 \
+                  libxfixes3 \
+                  libxi6 \
+                  libxrandr2 \
+                  libxrender1 \
+                  libxtst6 \
+                  libxv1 \
+                  libxvmc1 \
+                  libxxf86vm1 \
+                  && rm -rf /var/lib/apt/lists/*
+
+          RUN git clone https://github.com/novnc/noVNC.git /opt/noVNC && \
+              git clone https://github.com/novnc/websockify /opt/noVNC/utils/websockify
+
+          RUN wget -O /tmp/tg.tar.xz https://telegram.org/dl/desktop/linux && \
+              mkdir -p /opt/telegram && \
+              tar -xf /tmp/tg.tar.xz -C /opt/telegram --strip-components=1 && \
+              rm /tmp/tg.tar.xz
+
+          COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+          EXPOSE 8080
+
+          CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+          EOF
+
+      - name: 生成 supervisord.conf
+        run: |
+          cat > supervisord.conf <<'EOF'
+          [supervisord]
+          nodaemon=true
+
+          [program:xvfb]
+          command=/usr/bin/Xvfb :0 -screen 0 1280x800x24
+          priority=1
+          autostart=true
+          autorestart=true
+
+          [program:fluxbox]
+          command=/usr/bin/fluxbox
+          environment=DISPLAY=:0
+          priority=2
+          autostart=true
+          autorestart=true
+
+          [program:telegram]
+          command=/opt/telegram/Telegram
+          environment=DISPLAY=:0
+          priority=3
+          autostart=true
+          autorestart=true
+
+          [program:x11vnc]
+          command=/usr/bin/x11vnc -display :0 -forever -nopw -shared -rfbport 5900
+          priority=4
+          autostart=true
+          autorestart=true
+
+          [program:novnc]
+          command=/opt/noVNC/utils/novnc_proxy --vnc localhost:5900 --listen 8080
+          priority=5
+          autostart=true
+          autorestart=true
+          EOF
+
+      - name: 生成 frpc.ini.template
+        run: |
+          cat > frpc.ini.template <<'EOF'
+          [common]
+          server_addr = {{FRP_SERVER_ADDR}}
+          server_port = {{FRP_SERVER_PORT}}
+          token = {{FRP_TOKEN}}
+
+          [telegram]
+          type = tcp
+          local_ip = 127.0.0.1
+          local_port = 8080
+          remote_port = {{FRP_REMOTE_PORT}}
+          EOF
+
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE_NAME .
+
+      - name: Save Docker image
+        run: |
+          docker save $IMAGE_NAME | gzip > telegram-web-frp.tar.gz
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ github.event.inputs.SSH_HOST }}
+          username: ${{ github.event.inputs.SSH_USER }}
+          port: ${{ github.event.inputs.SSH_PORT }}
+          key: ${{ github.event.inputs.SSH_KEY }}
+          source: "telegram-web-frp.tar.gz,frpc.ini.template"
+          target: "~/"
+
+      - name: Deploy on server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ github.event.inputs.SSH_HOST }}
+          username: ${{ github.event.inputs.SSH_USER }}
+          port: ${{ github.event.inputs.SSH_PORT }}
+          key: ${{ github.event.inputs.SSH_KEY }}
+          script: |
+            set -e
+            # 替换 frpc.ini 参数
+            sed -e "s/{{FRP_SERVER_ADDR}}/${{ github.event.inputs.FRP_SERVER_ADDR }}/g" \
+                -e "s/{{FRP_SERVER_PORT}}/${{ github.event.inputs.FRP_SERVER_PORT }}/g" \
+                -e "s/{{FRP_TOKEN}}/${{ github.event.inputs.FRP_TOKEN }}/g" \
+                -e "s/{{FRP_REMOTE_PORT}}/${{ github.event.inputs.FRP_REMOTE_PORT }}/g" \
+                ~/frpc.ini.template > ~/frpc.ini
+
+            # 下载 frp 客户端
+            if [ ! -f ~/frpc ]; then
+              wget -O ~/frp.tar.gz https://github.com/fatedier/frp/releases/download/v0.53.0/frp_0.53.0_linux_amd64.tar.gz
+              tar -xzf ~/frp.tar.gz
+              mv frp_0.53.0_linux_amd64/frpc ~/frpc
+              chmod +x ~/frpc
+            fi
+
+            # 加载 Docker 镜像
+            docker load < ~/telegram-web-frp.tar.gz
+
+            # 停止并删除旧容器
+            docker rm -f $CONTAINER_NAME || true
+
+            # 启动新容器
+            docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME
+
+            # 启动 frpc
+            pkill frpc || true
+            nohup ~/frpc -c ~/frpc.ini > ~/frpc.log 2>&1 &
+
+            echo "部署完成，Web Telegram 可通过 FRP 远程端口访问"
