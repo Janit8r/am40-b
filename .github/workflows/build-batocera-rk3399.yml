@@ -1,51 +1,52 @@
-name: Build 32bit Musl Static (alist+v2ray)
+name: Build 386 musl static alist+v2ray
 on:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: i386/debian:12
     steps:
-      - name: Install 32bit musl toolchain
+      - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y musl-dev musl-tools gcc-multilib
+          apt update
+          apt install -y gcc musl-dev git wget
+          
+      - name: Install Go 1.22
+        run: |
+          wget https://dl.google.com/go/go1.22.10.linux-386.tar.gz
+          tar -C /usr/local -xzf go1.22.10.linux-386.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
+          go version
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.22
-
-      # ========== Alist 32位 musl 静态编译（带sqlite3，CGO_ENABLED=1）==========
       - name: Checkout Alist
         uses: actions/checkout@v4
         with:
           repository: AlistGo/alist
           path: alist
 
-      - name: Build Alist linux 386 musl
+      - name: Build Alist 32-bit musl static sqlite3
         working-directory: alist
         run: |
-          CC="musl-gcc -m32" \
+          export PATH=$PATH:/usr/local/go/bin
+          CC=musl-gcc \
           CGO_ENABLED=1 \
           GOOS=linux \
           GOARCH=386 \
-          GO386=softfloat \
-          go build -o alist -tags "sqlite3 fts5" -ldflags "-w -s -extldflags '-static'"
+          go build -o alist -tags "sqlite3" -ldflags "-w -s -extldflags '-static'"
 
-      # ========== V2Ray 32位 ==========
       - name: Checkout V2Ray
         uses: actions/checkout@v4
         with:
           repository: v2fly/v2ray-core
           path: v2ray
 
-      - name: Build V2Ray 386
+      - name: Build V2Ray 32-bit
         working-directory: v2ray
         run: |
+          export PATH=$PATH:/usr/local/go/bin
           CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags "-w -s" ./main
 
-      # ========== 上传产物 ==========
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
