@@ -1,4 +1,4 @@
-name: Build 32bit musl static (sqlite)
+name: Build 32bit musl static sqlite
 on:
   workflow_dispatch:
 
@@ -14,49 +14,32 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 编译 Alist：32位 musl + sqlite3 静态
+      # 构建 Alist (32位 musl + sqlite3)
       - name: Build Alist 386
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: -
-          platforms: linux/386
-          outputs: type=local,dest=./out
-          build-args: |
-            REPO=https://github.com/AlistGo/alist.git
-          dockerfile: |
-            FROM i386/alpine:3.19
-            RUN apk add --no-cache gcc musl-dev git go
-            ARG REPO
-            RUN git clone --depth=1 $REPO /build
-            WORKDIR /build
-            RUN CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -o alist -tags sqlite3 -ldflags "-w -s -extldflags '-static'"
-            ENTRYPOINT ["/bin/sh"]
+        run: |
+          mkdir -p out
+          docker run --rm --platform=linux/386 -v $(pwd)/out:/out \
+            i386/alpine:3.19 \
+            sh -c "apk add --no-cache gcc musl-dev git go && \
+            git clone --depth=1 https://github.com/AlistGo/alist /build && \
+            cd /build && \
+            CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -o alist -tags sqlite3 -ldflags '-w -s -extldflags -static' && \
+            cp alist /out/"
 
-      # 编译 V2Ray：32位 静态
+      # 构建 V2Ray (32位 静态)
       - name: Build V2Ray 386
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: -
-          platforms: linux/386
-          outputs: type=local,dest=./out
-          build-args: |
-            REPO=https://github.com/v2fly/v2ray-core.git
-          dockerfile: |
-            FROM i386/alpine:3.19
-            RUN apk add --no-cache git go
-            ARG REPO
-            RUN git clone --depth=1 $REPO /build
-            WORKDIR /build
-            RUN CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags "-w -s" ./main
-            ENTRYPOINT ["/bin/sh"]
+        run: |
+          docker run --rm --platform=linux/386 -v $(pwd)/out:/out \
+            i386/alpine:3.19 \
+            sh -c "apk add --no-cache git go && \
+            git clone --depth=1 https://github.com/v2fly/v2ray-core /build && \
+            cd /build && \
+            CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags '-w -s' ./main && \
+            cp v2ray /out/"
 
-      # 上传最终产物
+      # 上传产物
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
           name: linux-386-musl-static-sqlite
-          path: |
-            out/alist
-            out/v2ray
+          path: out/*
