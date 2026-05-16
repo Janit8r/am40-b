@@ -1,4 +1,4 @@
-name: Build 32bit musl (alist+v2ray)
+name: Build 32bit Musl Static (alist+v2ray)
 on:
   workflow_dispatch:
 
@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install musl tools
+      - name: Install 32bit musl toolchain
         run: |
           sudo apt update
           sudo apt install -y musl-dev musl-tools gcc-multilib
@@ -14,41 +14,39 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version: 1.22
 
-      # ========== 编译 Alist (32位 musl，支持sqlite) ==========
+      # ========== Alist 32位 musl 静态编译（带sqlite3，CGO_ENABLED=1）==========
       - name: Checkout Alist
         uses: actions/checkout@v4
         with:
           repository: AlistGo/alist
           path: alist
 
-      - name: Build Alist 386 musl
+      - name: Build Alist linux 386 musl
         working-directory: alist
         run: |
-          CC=musl-gcc \
+          CC="musl-gcc -m32" \
           CGO_ENABLED=1 \
           GOOS=linux \
           GOARCH=386 \
-          go build -o alist -tags "fts5 sqlite3" -ldflags "-w -s -linkmode external -extldflags '-static'"
+          GO386=softfloat \
+          go build -o alist -tags "sqlite3 fts5" -ldflags "-w -s -extldflags '-static'"
 
-      # ========== 编译 V2Ray (32位 musl) ==========
+      # ========== V2Ray 32位 ==========
       - name: Checkout V2Ray
         uses: actions/checkout@v4
         with:
           repository: v2fly/v2ray-core
           path: v2ray
 
-      - name: Build V2Ray 386 musl
+      - name: Build V2Ray 386
         working-directory: v2ray
         run: |
-          CGO_ENABLED=0 \
-          GOOS=linux \
-          GOARCH=386 \
-          go build -o v2ray -tags netgo -ldflags "-w -s" ./main
+          CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags "-w -s" ./main
 
       # ========== 上传产物 ==========
-      - name: Upload binaries
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-386-musl-static
