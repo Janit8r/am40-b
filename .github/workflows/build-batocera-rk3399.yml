@@ -1,56 +1,62 @@
-name: Build 386 musl static alist+v2ray
+name: Build 32bit musl static (sqlite)
 on:
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: i386/debian:12
     steps:
-      - name: Install dependencies
-        run: |
-          apt update
-          apt install -y gcc musl-dev git wget
-          
-      - name: Install Go 1.22
-        run: |
-          wget https://dl.google.com/go/go1.22.10.linux-386.tar.gz
-          tar -C /usr/local -xzf go1.22.10.linux-386.tar.gz
-          export PATH=$PATH:/usr/local/go/bin
-          go version
+      - uses: actions/checkout@v4
 
-      - name: Checkout Alist
-        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 编译 Alist：32位 musl + sqlite3 静态
+      - name: Build Alist 386
+        uses: docker/build-push-action@v6
         with:
-          repository: AlistGo/alist
-          path: alist
+          context: .
+          file: -
+          platforms: linux/386
+          outputs: type=local,dest=./out
+          build-args: |
+            REPO=https://github.com/AlistGo/alist.git
+          dockerfile: |
+            FROM i386/alpine:3.19
+            RUN apk add --no-cache gcc musl-dev git go
+            ARG REPO
+            RUN git clone --depth=1 $REPO /build
+            WORKDIR /build
+            RUN CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -o alist -tags sqlite3 -ldflags "-w -s -extldflags '-static'"
+            ENTRYPOINT ["/bin/sh"]
 
-      - name: Build Alist 32-bit musl static sqlite3
-        working-directory: alist
-        run: |
-          export PATH=$PATH:/usr/local/go/bin
-          CC=musl-gcc \
-          CGO_ENABLED=1 \
-          GOOS=linux \
-          GOARCH=386 \
-          go build -o alist -tags "sqlite3" -ldflags "-w -s -extldflags '-static'"
-
-      - name: Checkout V2Ray
-        uses: actions/checkout@v4
+      # 编译 V2Ray：32位 静态
+      - name: Build V2Ray 386
+        uses: docker/build-push-action@v6
         with:
-          repository: v2fly/v2ray-core
-          path: v2ray
+          context: .
+          file: -
+          platforms: linux/386
+          outputs: type=local,dest=./out
+          build-args: |
+            REPO=https://github.com/v2fly/v2ray-core.git
+          dockerfile: |
+            FROM i386/alpine:3.19
+            RUN apk add --no-cache git go
+            ARG REPO
+            RUN git clone --depth=1 $REPO /build
+            WORKDIR /build
+            RUN CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags "-w -s" ./main
+            ENTRYPOINT ["/bin/sh"]
 
-      - name: Build V2Ray 32-bit
-        working-directory: v2ray
-        run: |
-          export PATH=$PATH:/usr/local/go/bin
-          CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags "-w -s" ./main
-
-      - name: Upload artifacts
+      # 上传最终产物
+      - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
-          name: linux-386-musl-static
+          name: linux-386-musl-static-sqlite
           path: |
-            alist/alist
-            v2ray/v2ray
+            out/alist
+            out/v2ray
