@@ -14,30 +14,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 构建 Alist (32位 musl + sqlite3)
-      - name: Build Alist 386
+      - name: Build Alist + V2Ray 386
         run: |
           mkdir -p out
           docker run --rm --platform=linux/386 -v $(pwd)/out:/out \
-            i386/alpine:3.19 \
+            i386/alpine:edge \
             sh -c "apk add --no-cache gcc musl-dev git go && \
             git clone --depth=1 https://github.com/AlistGo/alist /build && \
             cd /build && \
             CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -o alist -tags sqlite3 -ldflags '-w -s -extldflags -static' && \
-            cp alist /out/"
-
-      # 构建 V2Ray (32位 静态)
-      - name: Build V2Ray 386
-        run: |
-          docker run --rm --platform=linux/386 -v $(pwd)/out:/out \
-            i386/alpine:3.19 \
-            sh -c "apk add --no-cache git go && \
-            git clone --depth=1 https://github.com/v2fly/v2ray-core /build && \
-            cd /build && \
+            git clone --depth=1 https://github.com/v2fly/v2ray-core /v2ray && \
+            cd /v2ray && \
             CGO_ENABLED=0 GOOS=linux GOARCH=386 go build -o v2ray -ldflags '-w -s' ./main && \
-            cp v2ray /out/"
+            cp /build/alist /out/ && \
+            cp /v2ray/v2ray /out/"
 
-      # 上传产物
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
